@@ -109,6 +109,8 @@ fi
 # Debian 13+ compatible
 # =====================================================
 
+apt update && apt install -y smartmontools lm-sensors stress-ng lsblk usbutils jq curl
+
 # Install smartmontools if missing
 if ! command -v smartctl &> /dev/null; then
     echo "📦 smartmontools niet gevonden. Installeren..."
