@@ -104,6 +104,89 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+#!/bin/bash
+# =====================================================
+# DISK HEALTH DIAGNOSTIC SCRIPT (ALL DRIVES, FAIL-SAFE)
+# Debian 13+ compatible
+# =====================================================
+
+# Install smartmontools if missing
+if ! command -v smartctl &> /dev/null; then
+    echo "📦 smartmontools niet gevonden. Installeren..."
+    apt update && apt install -y smartmontools
+fi
+
+echo "===================================================="
+echo "🔍 SCHIJF GEZONDHEIDSANALYSE"
+echo "===================================================="
+
+# Find all physical drives
+DISKS=$(lsblk -dno NAME,MODEL,SIZE | grep -vE "loop|boot|rpmb|sr")
+
+# Initialize problem counter
+PROBLEMS_FOUND=0
+PROBLEM_DISKS=()
+
+while read -r NAME MODEL SIZE; do
+    DEV="/dev/$NAME"
+    echo -e "\n💾 Schijf: $DEV [$MODEL - $SIZE]"
+    echo "----------------------------------------------------"
+
+    # SMART overall-health
+    STATUS=$(smartctl -H "$DEV" 2>/dev/null | awk -F': ' '/overall-health/ {gsub(/ /,"",$2); print $2}')
+
+    if [[ -z "$STATUS" ]]; then
+        echo "⚠️  SMART-status niet beschikbaar, mogelijk NVMe of nieuw model"
+        STATUS="UNKNOWN"
+    fi
+
+    if [[ "$STATUS" != "PASSED" && "$STATUS" != "OK" && "$STATUS" != "UNKNOWN" ]]; then
+        echo -e "\033[0;31m❌ KRITIEKE FOUT: $DEV status = $STATUS\033[0m"
+        PROBLEMS_FOUND=$((PROBLEMS_FOUND + 1))
+        PROBLEM_DISKS+=("$DEV - $STATUS")
+    fi
+
+    # Get attributes
+    ATTRS=$(smartctl -A "$DEV" 2>/dev/null)
+    
+    # SATA/SSD
+    REALLOC=$(echo "$ATTRS" | awk '/Reallocated_Sector_Ct/ {print $10}')
+    PENDING=$(echo "$ATTRS" | awk '/Current_Pending_Sector/ {print $10}')
+    
+    if [[ "$REALLOC" -gt 0 || "$PENDING" -gt 0 ]]; then
+        echo -e "\033[0;31m❌ Fysieke fouten gedetecteerd op $DEV\033[0m"
+        echo "   Reallocated Sectors: ${REALLOC:-0}"
+        echo "   Pending Sectors: ${PENDING:-0}"
+        PROBLEMS_FOUND=$((PROBLEMS_FOUND + 1))
+        PROBLEM_DISKS+=("$DEV - fysieke schade (Realloc:$REALLOC Pending:$PENDING)")
+    fi
+
+    # NVMe wear / temp
+    if [[ "$NAME" == nvme* ]]; then
+        TEMP=$(echo "$ATTRS" | awk '/Temperature/ {print $2 " " $3}')
+        WEAR=$(echo "$ATTRS" | awk -F': ' '/Percentage Used/ {print $2}')
+        echo "🌡️  Temperatuur: $TEMP"
+        echo "📉 Slijtage (Used): ${WEAR:-0}%"
+    else
+        HOURS=$(echo "$ATTRS" | awk '/Power_On_Hours/ {print $10}')
+        echo "🕒 Branduren: ${HOURS:-0} uur"
+        echo "🧱 Sectoren: Geen kritieke fouten gedetecteerd" 
+    fi
+
+done <<< "$DISKS"
+
+echo -e "\n===================================================="
+if [[ $PROBLEMS_FOUND -eq 0 ]]; then
+    echo "✅ Alle schijven lijken gezond."
+else
+    echo -e "\033[0;31m⚠️  Problemen gedetecteerd op $PROBLEMS_FOUND schijf(en):\033[0m"
+    for disk in "${PROBLEM_DISKS[@]}"; do
+        echo " - $disk"
+    done
+    echo "❗ Maak direct backups van deze schijven!"
+fi
+echo "===================================================="
+
 
 # =====================================================
 # Check Debian versie
