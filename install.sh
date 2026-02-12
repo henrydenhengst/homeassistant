@@ -329,6 +329,9 @@ if command -v bluetoothctl >/dev/null 2>&1; then
     done < <(bluetoothctl list)
 fi
 
+export ZIGBEE_USB="${ZIGBEE_DEVS[0]:-/dev/null}"
+export ZWAVE_USB="${ZWAVE_DEVS[0]:-/dev/null}"
+
 # =====================================================
 # Directories
 # =====================================================
