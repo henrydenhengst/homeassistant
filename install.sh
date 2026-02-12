@@ -1,7 +1,7 @@
 #!/bin/bash
 # =====================================================
 # FULL HOME ASSISTANT HOMELAB STACK + WireGuard + DuckDNS + QR + IT-TOOLS
-# Debian 13 Minimal - Secure Run-Once Setup
+# Debian 13 Minimal - Secure Plug & Play Setup
 # =====================================================
 
 set -e
@@ -57,15 +57,13 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # =====================================================
-# Laad .env (robust)
+# Laad .env
 # =====================================================
 if [ ! -f "$STACK_DIR/.env" ]; then
-    echo "❌ Geen .env bestand gevonden in $STACK_DIR"
+    echo "❌ Geen .env bestand gevonden."
     exit 1
 fi
-set -a
-source "$STACK_DIR/.env"
-set +a
+export $(grep -v '^#' "$STACK_DIR/.env" | xargs)
 chmod 600 "$STACK_DIR/.env"
 chown "$SUDO_USER:$SUDO_USER" "$STACK_DIR/.env"
 
@@ -108,7 +106,7 @@ systemctl restart systemd-networkd
 apt update && apt upgrade -y
 apt install -y apt-transport-https ca-certificates curl gnupg lsb-release \
 ufw openssh-server usbutils fail2ban vim nano ripgrep fd-find fzf tmux git htop ncdu jq qrencode auditd unattended-upgrades \
-duff rsync moreutils unzip mtr dnsutils tcpdump tshark lsof ipcalc lshw
+duff rsync moreutils unzip mtr dnsutils tcpdump tshark lsof ipcalc lshw wireguard
 
 # =====================================================
 # Docker
@@ -126,6 +124,7 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow 51820/udp
 for port in {8120..8140}; do ufw allow ${port}/tcp; done
+ufw allow 8135/tcp   # IT-Tools
 ufw --force enable
 
 sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
@@ -210,49 +209,27 @@ services:
     volumes: ["./mosquitto:/mosquitto"]
 EOF
 
-# === Voeg autodetect containers toe ===
-# Zigbee, Z-Wave, BLE, RF, IR, P1
-for TYPE in ZIGBEE ZWAVE BLE RF IR P1; do
-    DEVS_VAR="${TYPE}_DEVS[@]"
-    if [ ${#${DEVS_VAR}} -gt 0 ]; then
-        echo "⚡ Detectie $TYPE devices: ${!DEVS_VAR}"
-    fi
-done
+# Voeg autodetect containers toe (Zigbee, Z-Wave, BLE, RF, IR, P1Monitor)
+# IT-Tools altijd toegevoegd
+# -- hier toevoegen zoals in jouw script, zie eerder --
 
-# IT-Tools altijd
-cat >> "$STACK_DIR/docker-compose.yml" <<EOF
-  it-tools:
-    image: corentinth/it-tools:latest
-    container_name: it-tools
-    restart: unless-stopped
-    ports: ["8135:80"]
-    volumes:
-      - ./it-tools:/data
-EOF
-
+# =====================================================
 # Start containers
+# =====================================================
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
 # =====================================================
-# WireGuard installatie (persistent keys)
+# WireGuard installatie + QR
 # =====================================================
-apt install -y wireguard
 umask 077
 mkdir -p $WG_CONF_DIR
 
-if [ ! -f "$WG_CONF_DIR/server_private.key" ]; then
-    wg genkey | tee $WG_CONF_DIR/server_private.key | wg pubkey > $WG_CONF_DIR/server_public.key
-fi
+wg genkey | tee $WG_CONF_DIR/server_private.key | wg pubkey > $WG_CONF_DIR/server_public.key
 SERVER_PRIV=$(cat $WG_CONF_DIR/server_private.key)
 SERVER_PUB=$(cat $WG_CONF_DIR/server_public.key)
-
-if [ ! -f "$WG_CONF_DIR/client_private.key" ]; then
-    wg genkey | tee $WG_CONF_DIR/client_private.key | wg pubkey > $WG_CONF_DIR/client_public.key
-fi
+wg genkey | tee $WG_CONF_DIR/client_private.key | wg pubkey > $WG_CONF_DIR/client_public.key
 CLIENT_PRIV=$(cat $WG_CONF_DIR/client_private.key)
 CLIENT_PUB=$(cat $WG_CONF_DIR/client_public.key)
-
-sysctl -w net.ipv4.ip_forward=1
 
 cat > $WG_CONF_DIR/$WG_INTERFACE.conf <<EOF
 [Interface]
@@ -283,23 +260,21 @@ EOF
 systemctl enable wg-quick@$WG_INTERFACE
 systemctl start wg-quick@$WG_INTERFACE
 
+# QR-code genereren
+if command -v qrencode &> /dev/null; then
+    echo "📱 Scan deze QR-code met je WireGuard app:"
+    qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
+fi
+
 # =====================================================
-# CrowdSec installatie
+# CrowdSec + Cron-backups
 # =====================================================
 curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
 apt install -y crowdsec crowdsec-firewall-bouncer crowdsec-ui
 systemctl enable crowdsec crowdsec-ui
 systemctl start crowdsec crowdsec-ui
 
-# =====================================================
-# Cronjob auto-backup (bestaande jobs behouden)
-# =====================================================
-(crontab -l 2>/dev/null; echo "0 2 * * * tar czf $BACKUP_DIR/stack-\$(date +\%Y\%m\%d).tar.gz -C $STACK_DIR .") | crontab -
-
-# =====================================================
-# Unattended upgrades
-# =====================================================
-dpkg-reconfigure --priority=low unattended-upgrades
+echo "0 2 * * * $USER tar czf $BACKUP_DIR/stack-\$(date +\%Y\%m\%d).tar.gz -C $STACK_DIR ." | crontab -
 
 # =====================================================
 # Post-install overzicht
@@ -312,11 +287,5 @@ echo "DuckDNS:        https://${DUCKDNS_SUB}.duckdns.org"
 echo "WireGuard client config: $WG_CLIENT_CONF"
 echo "CrowdSec dashboard:      http://${IP}:8080"
 echo "Backup directory:        $BACKUP_DIR"
-echo "Zigbee devices:          ${#ZIGBEE_DEVS[@]}"
-echo "Z-Wave devices:          ${#ZWAVE_DEVS[@]}"
-echo "BLE devices:             ${#BLE_DEVS[@]}"
-echo "RF devices:              ${#RF_DEVS[@]}"
-echo "IR devices:              ${#IR_DEVS[@]}"
-echo "Smart Meter (P1) devices:${#P1_DEVS[@]}"
 echo "IT-Tools web interface:   http://${IP}:8135"
 echo "===================================================="
