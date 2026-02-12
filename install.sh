@@ -280,6 +280,44 @@ apt install -y apt-transport-https ca-certificates curl gnupg lsb-release \
 ufw openssh-server usbutils bluetooth bluez fail2ban vim nano ripgrep fd-find fzf tmux git htop ncdu jq qrencode auditd unattended-upgrades \
 duff rsync moreutils unzip mtr dnsutils tcpdump tshark lsof ipcalc lshw
 
+
+echo "===================================================="
+echo "🔍 USB SYSTEEM ANALYSE"
+echo "===================================================="
+
+TOTAL_ROOT_HUBS=$(find /sys/bus/usb/devices/usb* -maxdepth 0 | wc -l)
+TOTAL_PORTS=$(cat /sys/bus/usb/devices/*/max_child 2>/dev/null | awk '{sum+=$1} END {print sum}')
+
+USB2_COUNT=$(lsusb | grep -i "2.0 root hub" | wc -l)
+USB3_COUNT=$(lsusb | grep -iE "3.0|3.1|3.2 root hub" | wc -l)
+
+echo -e "📦 Hardware Capaciteit:"
+echo -e "   - Totaal aantal logische poorten: $TOTAL_PORTS"
+echo -e "   - Aantal USB 2.0 controllers:    $USB2_COUNT"
+echo -e "   - Aantal USB 3.0+ controllers:   $USB3_COUNT"
+
+CONNECTED=$(lsusb | grep -v "root hub" | wc -l)
+echo -e "\n🔗 Status:"
+echo -e "   - Momenteel verbonden apparaten: $CONNECTED"
+echo -e "   - Details:"
+lsusb | grep -v "root hub" | sed 's/^/      /'
+
+echo -e "\n⚕️  Gezondheidscheck (laatste 500 kernel meldingen):"
+ERRORS=$(dmesg --ctime | tail -n 500 | grep -iE "usb.*(error|disconnect|over-current|rejection)" | grep -v "new USB device")
+if [ -z "$ERRORS" ]; then
+    echo "   ✅ Geen USB-fouten gedetecteerd in de logs."
+else
+    echo "   ⚠️  Mogelijke problemen gevonden:"
+    echo "$ERRORS" | tail -n 5 | sed 's/^/      /'
+fi
+
+echo -e "\n🌳 USB boomstructuur:"
+lsusb -t
+
+echo "===================================================="
+
+
+
 # =====================================================
 # Docker installatie
 # =====================================================
