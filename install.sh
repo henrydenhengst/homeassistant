@@ -1,19 +1,12 @@
 #!/bin/bash
 # =====================================================
-# FULL HOME ASSISTANT HOMELAB STACK + WireGuard + DuckDNS + IT-TOOLS
-# Debian 13 Minimal - Secure Plug & Play Setup
+# FULL HOME ASSISTANT HOMELAB STACK + WireGuard + DuckDNS + QR + IT-TOOLS
+# Debian 13 Minimal - Secure Run-Once Setup
 # =====================================================
 
 set -e
 
-# =====================================================
-# Basis directories & log
-# =====================================================
-STACK_DIR="$HOME/home-assistant"
-BACKUP_DIR="$STACK_DIR/backups"
-IT_TOOLS_DIR="$STACK_DIR/it-tools"
-LOG_FILE="$STACK_DIR/ha-install.log"
-mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
+LOG_FILE="$HOME/ha-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "===================================================="
@@ -21,43 +14,73 @@ echo "INSTALLATIE START $(date)"
 echo "Logbestand: $LOG_FILE"
 echo "===================================================="
 
-# =====================================================
-# Laad .env bestand
-# =====================================================
-if [ ! -f "$STACK_DIR/.env" ]; then
-    echo "❌ .env bestand ontbreekt in $STACK_DIR"
-    exit 1
-fi
+STACK_DIR="$HOME/home-assistant"
+BACKUP_DIR="$STACK_DIR/backups"
+MIN_DISK_GB=14
+MIN_RAM_MB=3000
 
-export $(grep -v '^#' "$STACK_DIR/.env" | xargs)
-chmod 600 "$STACK_DIR/.env"
+WG_PORT=51820
+WG_INTERFACE="wg0"
+WG_CONF_DIR="/etc/wireguard"
+WG_CLIENT_CONF="$STACK_DIR/wg-client.conf"
+
+STATIC_IP=${1:-"192.168.1.10/24"}
+GATEWAY=${2:-"192.168.1.1"}
+DNS1="9.9.9.9"
+DNS2="1.1.1.1"
+DNS3="8.8.8.8"
+
+IT_TOOLS_DIR="$STACK_DIR/it-tools"
+
+backup_file() {
+    local file="$1"
+    if [ -f "$file" ]; then
+        mkdir -p "$BACKUP_DIR"
+        cp "$file" "$BACKUP_DIR/$(basename $file).bak.$(date +%Y%m%d_%H%M%S)"
+        echo "📦 Backup gemaakt: $file"
+    fi
+}
 
 # =====================================================
-# Pre-checks: Disk, RAM, Root
+# Pre-checks
 # =====================================================
 FREE_DISK_GB=$(df / | tail -1 | awk '{print int($4/1024/1024)}')
 TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
-if [[ $FREE_DISK_GB -lt 14 || $TOTAL_RAM_MB -lt 3000 ]]; then
+if [[ $FREE_DISK_GB -lt $MIN_DISK_GB || $TOTAL_RAM_MB -lt $MIN_RAM_MB ]]; then
     echo "❌ Onvoldoende systeembronnen."
     exit 1
 fi
 
 if [[ $EUID -ne 0 ]]; then
-    echo "❌ Run als root"
-    exit 1
+   echo "❌ Run als root."
+   exit 1
 fi
 
 # =====================================================
-# Netwerk configuratie
+# Laad .env (robust)
+# =====================================================
+if [ ! -f "$STACK_DIR/.env" ]; then
+    echo "❌ Geen .env bestand gevonden in $STACK_DIR"
+    exit 1
+fi
+set -a
+source "$STACK_DIR/.env"
+set +a
+chmod 600 "$STACK_DIR/.env"
+chown "$SUDO_USER:$SUDO_USER" "$STACK_DIR/.env"
+
+# =====================================================
+# Netwerk
 # =====================================================
 INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | head -n1)
 NETWORK_FILE="/etc/systemd/network/10-${INTERFACE}-static.network"
-[ -f "$NETWORK_FILE" ] && cp "$NETWORK_FILE" "$BACKUP_DIR/$(basename $NETWORK_FILE).bak.$(date +%Y%m%d_%H%M%S)"
-[ -f /etc/resolv.conf ] && cp /etc/resolv.conf "$BACKUP_DIR/resolv.conf.bak.$(date +%Y%m%d_%H%M%S)"
+[ -f "$NETWORK_FILE" ] && backup_file "$NETWORK_FILE"
+[ -f /etc/resolv.conf ] && backup_file "/etc/resolv.conf"
 
 systemctl stop dhcpcd NetworkManager 2>/dev/null || true
 systemctl disable dhcpcd NetworkManager 2>/dev/null || true
 systemctl enable systemd-networkd
+systemctl restart systemd-networkd
 
 cat > "$NETWORK_FILE" <<EOF
 [Match]
@@ -80,7 +103,7 @@ EOF
 systemctl restart systemd-networkd
 
 # =====================================================
-# Systeem update + tools
+# System update + tools
 # =====================================================
 apt update && apt upgrade -y
 apt install -y apt-transport-https ca-certificates curl gnupg lsb-release \
@@ -88,7 +111,7 @@ ufw openssh-server usbutils fail2ban vim nano ripgrep fd-find fzf tmux git htop 
 duff rsync moreutils unzip mtr dnsutils tcpdump tshark lsof ipcalc lshw
 
 # =====================================================
-# Docker installatie
+# Docker
 # =====================================================
 curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
@@ -97,7 +120,7 @@ apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker "$SUDO_USER"
 
 # =====================================================
-# UFW + SSH + Fail2Ban
+# UFW + SSH
 # =====================================================
 ufw default deny incoming
 ufw default allow outgoing
@@ -142,7 +165,18 @@ if [ -d /dev/serial/by-id ]; then
 fi
 
 # =====================================================
-# Docker Compose setup
+# Directories
+# =====================================================
+mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
+[ ${#ZIGBEE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/zigbee2mqtt"
+[ ${#ZWAVE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/zwavejs2mqtt"
+[ ${#BLE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/ble2mqtt"
+[ ${#RF_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/rfxtrx"
+[ ${#IR_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/mqtt-ir"
+[ ${#P1_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/p1monitor"
+
+# =====================================================
+# Docker Compose
 # =====================================================
 cat > "$STACK_DIR/docker-compose.yml" <<EOF
 services:
@@ -176,52 +210,51 @@ services:
     volumes: ["./mosquitto:/mosquitto"]
 EOF
 
-# Voeg automatisch containers toe afhankelijk van autodetect
-add_container() {
-    local name=$1 image=$2 port=$3 volume=$4 devices=$5
-    cat >> "$STACK_DIR/docker-compose.yml" <<EOF
-  $name:
-    image: $image
-    container_name: $name
-    restart: unless-stopped
-    ports: ["$port"]
-    volumes: ["$volume"]
-EOF
-    if [ -n "$devices" ]; then
-        echo "    devices:" >> "$STACK_DIR/docker-compose.yml"
-        for d in $devices; do
-            echo "      - $d" >> "$STACK_DIR/docker-compose.yml"
-        done
+# === Voeg autodetect containers toe ===
+# Zigbee, Z-Wave, BLE, RF, IR, P1
+for TYPE in ZIGBEE ZWAVE BLE RF IR P1; do
+    DEVS_VAR="${TYPE}_DEVS[@]"
+    if [ ${#${DEVS_VAR}} -gt 0 ]; then
+        echo "⚡ Detectie $TYPE devices: ${!DEVS_VAR}"
     fi
-}
-# Voorbeeld: Zigbee, Z-Wave, BLE, RF, IR, P1
-[ ${#ZIGBEE_DEVS[@]} -gt 0 ] && add_container "zigbee2mqtt" "koenkk/zigbee2mqtt" "8121:8080" "./zigbee2mqtt:/app/data" "${ZIGBEE_DEVS[@]}"
-[ ${#ZWAVE_DEVS[@]} -gt 0 ] && add_container "zwavejs2mqtt" "zwavejs/zwavejs2mqtt" "8129:8091" "./zwavejs2mqtt:/usr/src/app/store" "${ZWAVE_DEVS[@]}"
-[ ${#BLE_DEVS[@]} -gt 0 ] && add_container "ble2mqtt" "koenkk/ble2mqtt" "8131:8080" "./ble2mqtt:/app/data"
-[ ${#RF_DEVS[@]} -gt 0 ] && add_container "rfxtrx" "docker-rfxtrx" "8132:8080" "./rfxtrx:/data"
-[ ${#IR_DEVS[@]} -gt 0 ] && add_container "mqtt-ir" "mqtt-ir" "8133:8080" "./mqtt-ir:/data"
-[ ${#P1_DEVS[@]} -gt 0 ] && add_container "p1monitor" "p1monitor" "8134:8080" "./p1monitor:/data"
+done
 
-# IT-Tools
-add_container "it-tools" "corentinth/it-tools:latest" "8135:80" "./it-tools:/data"
+# IT-Tools altijd
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  it-tools:
+    image: corentinth/it-tools:latest
+    container_name: it-tools
+    restart: unless-stopped
+    ports: ["8135:80"]
+    volumes:
+      - ./it-tools:/data
+EOF
 
+# Start containers
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
 # =====================================================
-# WireGuard setup
+# WireGuard installatie (persistent keys)
 # =====================================================
 apt install -y wireguard
 umask 077
-mkdir -p /etc/wireguard
+mkdir -p $WG_CONF_DIR
 
-wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
-SERVER_PRIV=$(cat /etc/wireguard/server_private.key)
-SERVER_PUB=$(cat /etc/wireguard/server_public.key)
-wg genkey | tee /etc/wireguard/client_private.key | wg pubkey > /etc/wireguard/client_public.key
-CLIENT_PRIV=$(cat /etc/wireguard/client_private.key)
-CLIENT_PUB=$(cat /etc/wireguard/client_public.key)
+if [ ! -f "$WG_CONF_DIR/server_private.key" ]; then
+    wg genkey | tee $WG_CONF_DIR/server_private.key | wg pubkey > $WG_CONF_DIR/server_public.key
+fi
+SERVER_PRIV=$(cat $WG_CONF_DIR/server_private.key)
+SERVER_PUB=$(cat $WG_CONF_DIR/server_public.key)
 
-cat > /etc/wireguard/$WG_INTERFACE.conf <<EOF
+if [ ! -f "$WG_CONF_DIR/client_private.key" ]; then
+    wg genkey | tee $WG_CONF_DIR/client_private.key | wg pubkey > $WG_CONF_DIR/client_public.key
+fi
+CLIENT_PRIV=$(cat $WG_CONF_DIR/client_private.key)
+CLIENT_PUB=$(cat $WG_CONF_DIR/client_public.key)
+
+sysctl -w net.ipv4.ip_forward=1
+
+cat > $WG_CONF_DIR/$WG_INTERFACE.conf <<EOF
 [Interface]
 Address = 10.10.0.1/24
 ListenPort = $WG_PORT
@@ -234,7 +267,7 @@ PublicKey = $CLIENT_PUB
 AllowedIPs = 10.10.0.2/32
 EOF
 
-cat > "$STACK_DIR/wg-client.conf" <<EOF
+cat > $WG_CLIENT_CONF <<EOF
 [Interface]
 PrivateKey = $CLIENT_PRIV
 Address = 10.10.0.2/24
@@ -251,7 +284,7 @@ systemctl enable wg-quick@$WG_INTERFACE
 systemctl start wg-quick@$WG_INTERFACE
 
 # =====================================================
-# CrowdSec + dashboard
+# CrowdSec installatie
 # =====================================================
 curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
 apt install -y crowdsec crowdsec-firewall-bouncer crowdsec-ui
@@ -259,9 +292,9 @@ systemctl enable crowdsec crowdsec-ui
 systemctl start crowdsec crowdsec-ui
 
 # =====================================================
-# Cron auto-backup
+# Cronjob auto-backup (bestaande jobs behouden)
 # =====================================================
-echo "0 2 * * * $USER tar czf $BACKUP_DIR/stack-\$(date +\%Y\%m\%d).tar.gz -C $STACK_DIR ." | crontab -
+(crontab -l 2>/dev/null; echo "0 2 * * * tar czf $BACKUP_DIR/stack-\$(date +\%Y\%m\%d).tar.gz -C $STACK_DIR .") | crontab -
 
 # =====================================================
 # Unattended upgrades
@@ -276,7 +309,7 @@ echo "===================================================="
 echo "INSTALLATIE VOLTOOID 🎉"
 echo "Home Assistant:  http://${IP}:8123"
 echo "DuckDNS:        https://${DUCKDNS_SUB}.duckdns.org"
-echo "WireGuard client config: $STACK_DIR/wg-client.conf"
+echo "WireGuard client config: $WG_CLIENT_CONF"
 echo "CrowdSec dashboard:      http://${IP}:8080"
 echo "Backup directory:        $BACKUP_DIR"
 echo "Zigbee devices:          ${#ZIGBEE_DEVS[@]}"
