@@ -502,10 +502,19 @@ docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 # =====================================================
 # WireGuard installatie en QR
 # =====================================================
+
+# =====================================================
+# WireGuard installatie, IP forwarding en QR
+# =====================================================
 apt install -y wireguard
 umask 077
 mkdir -p $WG_CONF_DIR
 
+# IP forwarding inschakelen
+echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-wireguard.conf
+sysctl -p /etc/sysctl.d/99-wireguard.conf
+
+# Server en client keys genereren
 wg genkey | tee $WG_CONF_DIR/server_private.key | wg pubkey > $WG_CONF_DIR/server_public.key
 SERVER_PRIV=$(cat $WG_CONF_DIR/server_private.key)
 SERVER_PUB=$(cat $WG_CONF_DIR/server_public.key)
@@ -513,6 +522,7 @@ wg genkey | tee $WG_CONF_DIR/client_private.key | wg pubkey > $WG_CONF_DIR/clien
 CLIENT_PRIV=$(cat $WG_CONF_DIR/client_private.key)
 CLIENT_PUB=$(cat $WG_CONF_DIR/client_public.key)
 
+# Server configuratie
 cat > $WG_CONF_DIR/$WG_INTERFACE.conf <<EOF
 [Interface]
 Address = 10.10.0.1/24
@@ -526,11 +536,12 @@ PublicKey = $CLIENT_PUB
 AllowedIPs = 10.10.0.2/32
 EOF
 
+# Client configuratie met werkende publieke DNS
 cat > $WG_CLIENT_CONF <<EOF
 [Interface]
 PrivateKey = $CLIENT_PRIV
 Address = 10.10.0.2/24
-DNS = 10.10.0.1
+DNS = 1.1.1.1, 9.9.9.9
 
 [Peer]
 PublicKey = $SERVER_PUB
@@ -539,11 +550,14 @@ AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 EOF
 
+# WireGuard service starten
 systemctl enable wg-quick@$WG_INTERFACE
 systemctl start wg-quick@$WG_INTERFACE
 
+# QR-code voor clientconfig
 qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
 
+echo "✅ WireGuard opgezet met IP forwarding en werkende DNS in client-config"
 # =====================================================
 # Post-install checks
 # =====================================================
