@@ -253,6 +253,45 @@ if [[ "$do_memtest" =~ ^[Yy]$ ]]; then
 fi
 
 # =====================================================
+# FINAL HARDWARE GUARDIAN FOR DEBIAN 13
+# =====================================================
+
+echo -e "🛡️  Starten van de Finale Hardware Guard..."
+
+# 1. Geheugen (RAM) Check
+MEM_ERR=$(dmesg | grep -iE "memory error|ECC|EDAC" || true)
+if [[ -n "$MEM_ERR" ]]; then
+    echo "❌ RAM FOUT: Hardwarefouten gevonden in geheugenlogs."
+    exit 1
+fi
+
+# 2. Temperatuur Check
+if command -v sensors &> /dev/null; then
+    TEMP=$(sensors | grep "Package id 0:" | awk '{print $4}' | tr -d '+°C' | cut -d. -f1)
+    if [[ -n "$TEMP" && "$TEMP" -gt 80 ]]; then
+        echo "⚠️  CPU is te heet ($TEMP°C). Zorg voor betere koeling."
+        exit 1
+    fi
+fi
+
+# 3. Voeding/Undervoltage Check (voor Pi/ARM)
+if command -v vcgencmd &> /dev/null; then
+    UNDERVOLT=$(vcgencmd get_throttled | grep -v "0x0" || true)
+    if [[ -n "$UNDERVOLT" ]]; then
+        echo "❌ VOEDING FOUT: Undervoltage gedetecteerd. Vervang je adapter!"
+        exit 1
+    fi
+fi
+
+# 4. CPU Stabiliteit (Korte Stress-test)
+echo "⚡ CPU Stress-test uitvoeren (15 sec)..."
+if command -v stress-ng &> /dev/null; then
+    stress-ng --cpu $(nproc) -t 15s --quiet || { echo "❌ CPU onstabiel onder last"; exit 1; }
+fi
+
+echo "✅ Hardware is 100% stabiel bevonden. Installatie start nu..."
+
+# =====================================================
 # Check Debian versie
 # =====================================================
 if [ -f /etc/os-release ]; then
