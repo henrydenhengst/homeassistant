@@ -321,10 +321,13 @@ if [ -d /dev/serial/by-id ]; then
     done
 fi
 
-# Bluetooth devices
-for BT in $(hciconfig | grep hci | awk '{print $1}'); do
-    BT_DEVS+=("$BT")
-done
+# Bluetooth devices (toekomstbestendig)
+BT_DEVS=()
+if command -v bluetoothctl >/dev/null 2>&1; then
+    while read -r line; do
+        [[ "$line" =~ ^Controller\ ([^[:space:]]+) ]] && BT_DEVS+=("${BASH_REMATCH[1]}")
+    done < <(bluetoothctl list)
+fi
 
 # =====================================================
 # Directories
