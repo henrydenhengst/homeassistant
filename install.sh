@@ -724,6 +724,8 @@ services:
     container_name: crowdsec
     restart: unless-stopped
     ports: ["8134:8080"]
+    volumes:
+    - ./crowdsec:/etc/crowdsec
 
   it-tools:
     image: corentinth/it-tools:latest
