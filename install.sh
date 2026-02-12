@@ -26,7 +26,6 @@ WG_CLIENT_CONF="$STACK_DIR/wg-client.conf"
 
 STATIC_IP=${1:-"192.168.1.10/24"}
 GATEWAY=${2:-"192.168.1.1"}
-INTERFACE=${3:-$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | head -n1)}
 DNS1="9.9.9.9"
 DNS2="1.1.1.1"
 DNS3="8.8.8.8"
@@ -69,8 +68,9 @@ chmod 600 "$STACK_DIR/.env"
 chown "$SUDO_USER:$SUDO_USER" "$STACK_DIR/.env"
 
 # =====================================================
-# Netwerkconfiguratie
+# Netwerk
 # =====================================================
+INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | head -n1)
 NETWORK_FILE="/etc/systemd/network/10-${INTERFACE}-static.network"
 [ -f "$NETWORK_FILE" ] && backup_file "$NETWORK_FILE"
 [ -f /etc/resolv.conf ] && backup_file "/etc/resolv.conf"
@@ -109,7 +109,7 @@ ufw openssh-server usbutils fail2ban vim nano ripgrep fd-find fzf tmux git htop 
 duff rsync moreutils unzip mtr dnsutils tcpdump tshark lsof ipcalc lshw
 
 # =====================================================
-# Docker installatie
+# Docker
 # =====================================================
 curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
@@ -175,10 +175,135 @@ mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
 [ ${#P1_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/p1monitor"
 
 # =====================================================
-# Docker Compose genereren
+# Docker Compose setup
 # =====================================================
-# (Toevoegen van alle autodetect containers en IT-Tools)
-# ... (zelfde als eerdere versie, niet herhaald hier voor kortheid)
+cat > "$STACK_DIR/docker-compose.yml" <<EOF
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    privileged: true
+    restart: unless-stopped
+    ports: ["8123:8123"]
+    volumes: ["./homeassistant:/config"]
+    environment:
+      - TZ=${HA_TZ}
+    depends_on: [mariadb, mosquitto]
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE=${MYSQL_DATABASE}
+      MYSQL_USER=${MYSQL_USER}
+      MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes: ["./mariadb:/var/lib/mysql"]
+
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    restart: unless-stopped
+    ports: ["8120:1883"]
+    volumes: ["./mosquitto:/mosquitto"]
+EOF
+
+# =====================================================
+# Voeg containers toe afhankelijk van autodetect
+# =====================================================
+# Zigbee
+if [ ${#ZIGBEE_DEVS[@]} -gt 0 ]; then
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    ports: ["8121:8080"]
+    volumes: ["./zigbee2mqtt:/app/data"]
+    devices:
+EOF
+    for idx in "${!ZIGBEE_DEVS[@]}"; do
+        echo "      - ${ZIGBEE_DEVS[$idx]}:/dev/ttyUSB$idx" >> "$STACK_DIR/docker-compose.yml"
+    done
+    echo "    environment: [\"TZ=${HA_TZ}\"]" >> "$STACK_DIR/docker-compose.yml"
+fi
+
+# Z-Wave
+if [ ${#ZWAVE_DEVS[@]} -gt 0 ]; then
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  zwavejs2mqtt:
+    image: zwavejs/zwavejs2mqtt
+    container_name: zwavejs2mqtt
+    restart: unless-stopped
+    ports: ["8129:8091"]
+    volumes: ["./zwavejs2mqtt:/usr/src/app/store"]
+    devices:
+EOF
+    for idx in "${!ZWAVE_DEVS[@]}"; do
+        echo "      - ${ZWAVE_DEVS[$idx]}:/dev/ttyUSB$idx" >> "$STACK_DIR/docker-compose.yml"
+    done
+    echo "    environment: [\"TZ=${HA_TZ}\"]" >> "$STACK_DIR/docker-compose.yml"
+fi
+
+# BLE
+if [ ${#BLE_DEVS[@]} -gt 0 ]; then
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  ble2mqtt:
+    image: koenkk/ble2mqtt
+    container_name: ble2mqtt
+    restart: unless-stopped
+    ports: ["8131:8080"]
+    volumes: ["./ble2mqtt:/app/data"]
+EOF
+fi
+
+# RF
+if [ ${#RF_DEVS[@]} -gt 0 ]; then
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  rfxtrx:
+    image: docker-rfxtrx
+    container_name: rfxtrx
+    restart: unless-stopped
+    ports: ["8132:8080"]
+    volumes: ["./rfxtrx:/data"]
+EOF
+fi
+
+# IR
+if [ ${#IR_DEVS[@]} -gt 0 ]; then
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  mqtt-ir:
+    image: mqtt-ir
+    container_name: mqtt-ir
+    restart: unless-stopped
+    ports: ["8133:8080"]
+    volumes: ["./mqtt-ir:/data"]
+EOF
+fi
+
+# P1
+if [ ${#P1_DEVS[@]} -gt 0 ]; then
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  p1monitor:
+    image: p1monitor
+    container_name: p1monitor
+    restart: unless-stopped
+    ports: ["8134:8080"]
+    volumes: ["./p1monitor:/data"]
+EOF
+fi
+
+# IT-Tools
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+  it-tools:
+    image: corentinth/it-tools:latest
+    container_name: it-tools
+    restart: unless-stopped
+    ports: ["8135:80"]
+    volumes:
+      - ./it-tools:/data
+EOF
 
 # =====================================================
 # Start containers
@@ -186,7 +311,7 @@ mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
 # =====================================================
-# WireGuard installatie
+# WireGuard
 # =====================================================
 apt install -y wireguard
 umask 077
@@ -228,11 +353,8 @@ EOF
 systemctl enable wg-quick@$WG_INTERFACE
 systemctl start wg-quick@$WG_INTERFACE
 
-# Toon QR-code voor WireGuard
-qrencode -t ansiutf8 < $WG_CLIENT_CONF
-
 # =====================================================
-# CrowdSec + Dashboard + Docker monitoring
+# CrowdSec + Dashboard
 # =====================================================
 curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
 apt install -y crowdsec crowdsec-firewall-bouncer crowdsec-ui
@@ -245,22 +367,51 @@ systemctl start crowdsec crowdsec-ui
 echo "0 2 * * * $USER tar czf $BACKUP_DIR/stack-\$(date +\%Y\%m\%d).tar.gz -C $STACK_DIR ." | crontab -
 
 # =====================================================
-# Post-install overzicht + service check
+# Unattended upgrades
 # =====================================================
+dpkg-reconfigure --priority=low unattended-upgrades
+
+# =====================================================
+# Post-install check + QR-code
+# =====================================================
+echo "===================================================="
+echo "🚀 Post-install check"
+echo "===================================================="
+
+echo "📦 Docker containers status:"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+echo "🌐 Controle open poorten:"
+for port in 8120 8121 8123 8129 8131 8132 8133 8134 8135 51820; do
+    if ss -tuln | grep -q "$port"; then
+        echo "Port $port open ✅"
+    else
+        echo "Port $port gesloten ❌"
+    fi
+done
+
+echo "🔑 WireGuard status:"
+wg show $WG_INTERFACE
+
+if command -v qrencode &>/dev/null; then
+    echo "📱 WireGuard QR-code voor client:"
+    qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
+else
+    echo "⚠️ qrencode niet geïnstalleerd, kan geen QR-code tonen"
+fi
+
+echo "🔌 Gedetecteerde USB-devices:"
+echo "Zigbee: ${#ZIGBEE_DEVS[@]} ${ZIGBEE_DEVS[@]}"
+echo "Z-Wave: ${#ZWAVE_DEVS[@]} ${ZWAVE_DEVS[@]}"
+echo "BLE:    ${#BLE_DEVS[@]} ${BLE_DEVS[@]}"
+echo "RF:     ${#RF_DEVS[@]} ${RF_DEVS[@]}"
+echo "IR:     ${#IR_DEVS[@]} ${IR_DEVS[@]}"
+echo "P1:     ${#P1_DEVS[@]} ${P1_DEVS[@]}"
+
 IP=$(hostname -I | awk '{print $1}')
-echo "===================================================="
-echo "INSTALLATIE VOLTOOID 🎉"
-echo "Home Assistant:  http://${IP}:8123"
-echo "IT-Tools:        http://${IP}:8135"
-echo "CrowdSec:        http://${IP}:8080"
-echo "WireGuard config: $WG_CLIENT_CONF"
-echo "Backup directory: $BACKUP_DIR"
-
-echo ""
-echo "🔍 Controleer services en poorten:"
-docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
-ufw status verbose
-systemctl status wg-quick@$WG_INTERFACE | head -10
-systemctl is-active crowdsec crowdsec-ui fail2ban
+echo "🏠 Home Assistant:  http://${IP}:8123"
+echo "🛠 IT-Tools:        http://${IP}:8135"
+echo "📊 CrowdSec:        http://${IP}:8080"
 
 echo "===================================================="
+echo "✅ Installatie compleet!"
