@@ -449,6 +449,10 @@ qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
 IP=$(hostname -I | awk '{print $1}')
 echo "===================================================="
 echo "INSTALLATIE VOLTOOID 🎉"
+
+echo "🔎 Container status check:"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
 echo "Home Assistant:  http://${IP}:8123"
 echo "IT-Tools:        http://${IP}:8135"
 echo "CrowdSec:        http://${IP}:8134"
