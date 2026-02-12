@@ -371,7 +371,7 @@ services:
     ports: ["8134:8080"]
 
   it-tools:
-    image: your-it-tools-image
+    image: corentinth/it-tools:latest
     container_name: it-tools
     restart: unless-stopped
     ports: ["8135:8080"]
