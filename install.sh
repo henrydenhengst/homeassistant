@@ -188,27 +188,68 @@ echo "===================================================="
 
 
 
-# MEMORY CHECK 
+# =====================================================
+# MEMORY CHECK + OPTIONELE STRESSTEST
+# =====================================================
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-echo -e "\n🧠 Stap 1b: Geheugenintegriteit controleren..."
+echo -e "\n🧠 Stap 1b: Geheugenintegriteit controleren (ECC/Kernel)..."
 
+# Check systeemlogs op geheugenfouten
 MEM_ERRORS=$(dmesg --ctime | grep -iE "memory error|ECC error|Corrected error|Uncorrected error" || true)
 
 if [[ -n "$MEM_ERRORS" ]]; then
     echo -e "${RED}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     echo "❌ KRITIEKE FOUT: Geheugenfouten gedetecteerd!"
     echo "$MEM_ERRORS" | tail -n 5
-    echo "Uitleg: Je RAM-geheugen is onbetrouwbaar. Dit zal leiden"
-    echo "        tot crashes en corrupte databases."
+    echo "Uitleg: Je RAM-geheugen is onbetrouwbaar. Dit zal leiden tot crashes en corrupte databases."
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${NC}"
     echo "$MEM_ERRORS" >> "$LOG_FILE"
     exit 1
 else
     echo -e "${GREEN}✅ Geen geheugenfouten gevonden in systeemlogs.${NC}"
+fi
+
+# =====================================================
+# Optionele actieve RAM-test met memtester
+# =====================================================
+read -p "Wil je een actieve RAM-test uitvoeren met memtester? (aanbevolen bij nieuw ECC RAM) [y/N]: " do_memtest
+if [[ "$do_memtest" =~ ^[Yy]$ ]]; then
+
+    if ! command -v memtester &> /dev/null; then
+        echo "📦 memtester niet gevonden. Installeren..."
+        apt update && apt install -y memtester
+    fi
+
+    TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
+    # Test 25% van RAM of max 8GB
+    TEST_MB=$(( TOTAL_RAM_MB / 4 ))
+    (( TEST_MB > 8192 )) && TEST_MB=8192
+
+    RUNS=1  # Aantal passes, kan verhoogd worden voor diepere test
+    echo "🧪 RAM-test starten: $TEST_MB MB, $RUNS run(s). Dit kan enkele minuten duren..."
+
+    TMP_MEM_LOG=$(mktemp)
+    for i in $(seq 1 $RUNS); do
+        echo "🔹 Run $i van $RUNS"
+        memtester "${TEST_MB}M" 1 | tee -a "$TMP_MEM_LOG"
+    done
+
+    # Check op fouten
+    if grep -q -i "FAIL" "$TMP_MEM_LOG"; then
+        echo -e "${RED}❌ RAM-fouten gedetecteerd tijdens memtester!${NC}"
+        tail -n 20 "$TMP_MEM_LOG"
+        cat "$TMP_MEM_LOG" >> "$LOG_FILE"
+        rm "$TMP_MEM_LOG"
+        exit 1
+    else
+        echo -e "${GREEN}✅ RAM-test geslaagd, geen fouten gevonden.${NC}"
+        cat "$TMP_MEM_LOG" >> "$LOG_FILE"
+        rm "$TMP_MEM_LOG"
+    fi
 fi
 
 
