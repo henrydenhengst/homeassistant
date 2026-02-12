@@ -171,8 +171,6 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow 51820/udp
 ufw allow 8120:8140/tcp       # range voor HA services
-ufw allow 8134/tcp             # CrowdSec
-ufw allow 8135/tcp             # IT-Tools
 ufw --force enable
 
 # SSH root login uit
