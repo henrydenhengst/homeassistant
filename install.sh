@@ -117,17 +117,104 @@ chown "$SUDO_USER:$SUDO_USER" "$STACK_DIR/.env"
 # =====================================================
 # Netwerkconfiguratie
 # =====================================================
-INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | head -n1)
-NETWORK_FILE="/etc/systemd/network/10-${INTERFACE}-static.network"
-[ -f "$NETWORK_FILE" ] && backup_file "$NETWORK_FILE"
-[ -f /etc/resolv.conf ] && backup_file "/etc/resolv.conf"
+# =====================================================
+# Netwerkbeheer detectie & statische IP configuratie
+# =====================================================
 
-systemctl stop dhcpcd NetworkManager 2>/dev/null || true
-systemctl disable dhcpcd NetworkManager 2>/dev/null || true
-systemctl enable systemd-networkd
-systemctl restart systemd-networkd
+echo ""
+echo "Detecteer netwerkbeheer..."
 
-cat > "$NETWORK_FILE" <<EOF
+# Detecteer eerste “echte” netwerkinterface
+INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -Ev '^(lo|docker|br|veth|wg)' | head -n1)
+
+if [ -z "$INTERFACE" ]; then
+    echo "❌ Geen geschikte netwerkinterface gevonden (lo, docker, bridge etc. uitgesloten)."
+    echo "Huidige interfaces:"
+    ip link show
+    echo ""
+    read -p "Wil je handmatig een interface opgeven? (of druk Enter om netwerkconfiguratie over te slaan): " manual_if
+    if [ -n "$manual_if" ]; then
+        INTERFACE="$manual_if"
+    else
+        echo "Netwerkconfiguratie overgeslagen."
+        SKIP_NETWORK_CONFIG=true
+    fi
+fi
+
+echo "Gedetecteerde primaire interface: ${INTERFACE:-<geen>}"
+
+# =============================================
+# Netplan check
+# =============================================
+
+NETPLAN_ACTIVE=false
+SKIP_NETWORK_CONFIG=false
+
+if command -v netplan >/dev/null 2>&1; then
+    if [ -d /etc/netplan ] && compgen -G "/etc/netplan/*.yaml" >/dev/null; then
+        NETPLAN_ACTIVE=true
+        echo "⚠️ Netplan is aanwezig en heeft configuratiebestanden → waarschijnlijk actief"
+    else
+        echo "ℹ️ Netplan is geïnstalleerd, maar geen .yaml bestanden gevonden in /etc/netplan"
+    fi
+else
+    echo "ℹ️ Netplan niet geïnstalleerd"
+fi
+
+if [ "$NETPLAN_ACTIVE" = true ]; then
+    echo ""
+    echo "=============================================================="
+    echo " WAARSCHUWING: Netplan lijkt actief te zijn op dit systeem"
+    echo " Automatische statische IP configuratie kan genegeerd of overschreven worden"
+    echo "=============================================================="
+    echo ""
+    read -p "Toch proberen systemd-networkd in te stellen? (y/N): " proceed
+    if [[ ! "$proceed" =~ ^[Yy]$ ]]; then
+        echo "Netplan configuratie overgeslagen. Netwerk blijft ongewijzigd."
+        SKIP_NETWORK_CONFIG=true
+    else
+        echo "Doorgaan met systemd-networkd instellingen (risico op conflict aanwezig)"
+    fi
+fi
+
+# =============================================
+# systemd-networkd instellen (alleen als niet geskipt)
+# =============================================
+
+if [ "${SKIP_NETWORK_CONFIG:-false}" != true ]; then
+
+    echo "Activeren van systemd-networkd + systemd-resolved..."
+    if ! systemctl enable --now systemd-networkd systemd-resolved 2>/dev/null; then
+        echo "❌ Kan systemd-networkd of systemd-resolved niet activeren/starten"
+        systemctl status systemd-networkd systemd-resolved --lines=0
+        echo ""
+        read -p "Doorgaan ondanks fout? (y/N): " force
+        [[ ! "$force" =~ ^[Yy]$ ]] && exit 1
+    fi
+
+    # resolv.conf correct koppelen
+    CURRENT_RESOLV=$(readlink -f /etc/resolv.conf 2>/dev/null || echo "")
+    if [ "$CURRENT_RESOLV" = "/run/systemd/resolve/stub-resolv.conf" ] || [ "$CURRENT_RESOLV" = "/run/systemd/resolve/resolv.conf" ]; then
+        echo "ℹ️ resolv.conf is al correct gekoppeld aan systemd-resolved"
+    else
+        echo "Symlink /etc/resolv.conf → /run/systemd/resolve/resolv.conf"
+        ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
+    fi
+
+    # =============================================
+    # Statisch .network bestand aanmaken
+    # =============================================
+
+    NETWORK_FILE="/etc/systemd/network/20-${INTERFACE}-static.network"
+
+    if [ -f "$NETWORK_FILE" ]; then
+        echo "Bestaand configuratiebestand gevonden: $NETWORK_FILE"
+        backup_file "$NETWORK_FILE"
+    fi
+
+    echo "Statisch IP configureren: $STATIC_IP via $INTERFACE"
+
+    cat > "$NETWORK_FILE" <<EOF
 [Match]
 Name=$INTERFACE
 
@@ -136,16 +223,32 @@ DHCP=no
 Address=$STATIC_IP
 Gateway=$GATEWAY
 DNS=$DNS1 $DNS2 $DNS3
+
+# Optioneel: link-local uitzetten als je puur statisch IPv4 wilt
+# LinkLocalAddressing=no
 EOF
 
-rm -f /etc/resolv.conf
-cat > /etc/resolv.conf <<EOF
-nameserver $DNS1
-nameserver $DNS2
-nameserver $DNS3
-EOF
+    echo "Configuratiebestand geschreven: $NETWORK_FILE"
 
-systemctl restart systemd-networkd
+    # Herstarten en korte validatie
+    echo "Netwerkdiensten herstarten..."
+    systemctl restart systemd-networkd
+
+    sleep 3
+
+    # Simpele check
+    CURRENT_IP=$(ip -4 addr show dev "$INTERFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1)
+    if [ "${CURRENT_IP}" = "${STATIC_IP%/*}" ]; then
+        echo "✅ Statisch IP succesvol toegepast: $CURRENT_IP"
+    else
+        echo "⚠️  Waarschuwing: verwachte IP ${STATIC_IP%/*} niet gezien"
+        echo "Huidig IP op $INTERFACE: ${CURRENT_IP:-geen}"
+        ip addr show dev "$INTERFACE"
+    fi
+
+else
+    echo "Netwerkconfiguratie overgeslagen (zoals gevraagd of vanwege netplan)."
+fi
 
 # =====================================================
 # Systeem update + tools
