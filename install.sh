@@ -252,30 +252,6 @@ if [[ "$do_memtest" =~ ^[Yy]$ ]]; then
     fi
 fi
 
-
-# =====================================================
-# OPTIONELE RAM STRESSTEST
-# =====================================================
-read -p "Wil je een actieve RAM-test uitvoeren met memtester? (aanbevolen bij nieuw ECC RAM) [y/N]: " do_memtest
-if [[ "$do_memtest" =~ ^[Yy]$ ]]; then
-    if ! command -v memtester &> /dev/null; then
-        echo "📦 memtester niet gevonden. Installeren..."
-        apt update && apt install -y memtester
-    fi
-
-    TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
-    # Test 1 GB of 25% van RAM, max 8GB per run
-    TEST_MB=$(( TOTAL_RAM_MB / 4 ))
-    if [ $TEST_MB -gt 8192 ]; then
-        TEST_MB=8192
-    fi
-
-    echo "🧪 RAM-test starten: $TEST_MB MB (CTRL+C om te stoppen)"
-    echo "Dit kan enkele minuten duren afhankelijk van RAM grootte..."
-    memtester "${TEST_MB}M" 1
-    echo "✅ RAM-test voltooid. Bekijk output voor fouten."
-fi
-
 # =====================================================
 # Check Debian versie
 # =====================================================
