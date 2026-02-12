@@ -52,6 +52,7 @@
 # =====================================================
 
 set -e
+set -o pipefail
 
 LOG_FILE="$HOME/ha-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
