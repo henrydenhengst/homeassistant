@@ -187,6 +187,33 @@ fi
 echo "===================================================="
 
 
+
+# MEMORY CHECK 
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+echo -e "\n🧠 Stap 1b: Geheugenintegriteit controleren..."
+
+MEM_ERRORS=$(dmesg --ctime | grep -iE "memory error|ECC error|Corrected error|Uncorrected error" || true)
+
+if [[ -n "$MEM_ERRORS" ]]; then
+    echo -e "${RED}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "❌ KRITIEKE FOUT: Geheugenfouten gedetecteerd!"
+    echo "$MEM_ERRORS" | tail -n 5
+    echo "Uitleg: Je RAM-geheugen is onbetrouwbaar. Dit zal leiden"
+    echo "        tot crashes en corrupte databases."
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${NC}"
+    echo "$MEM_ERRORS" >> "$LOG_FILE"
+    exit 1
+else
+    echo -e "${GREEN}✅ Geen geheugenfouten gevonden in systeemlogs.${NC}"
+fi
+
+
+
+
 # =====================================================
 # Check Debian versie
 # =====================================================
