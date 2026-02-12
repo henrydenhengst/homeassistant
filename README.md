@@ -86,7 +86,7 @@ Een overzicht van interessante Home Assistant repositories met uitleg, gebruikss
 **Repo:** [Trikos/Home-Assistant-Naming-Convention](https://github.com/Trikos/Home-Assistant-Naming-Convention)  
 **Functionaliteit:**
 - Richtlijnen voor consistente, overzichtelijke entity-naamgeving.
-- Voorbeeldconventie: domain.location_deviceType_function_identifier
+- Voorbeeldconventie: `domain.location_deviceType_function_identifier`
 
 Bijvoorbeeld: `sensor.livingroom_temperature_main`.
 
