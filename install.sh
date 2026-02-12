@@ -1,55 +1,30 @@
 #!/bin/bash
 # =====================================================
-# FULL HOME ASSISTANT HOMELAB STACK INSTALLER
+# FULL HOME ASSISTANT HOMELAB INSTALLER
 # Debian 13 Minimal - Secure Plug & Play Setup
 # =====================================================
 #
 # FUNCTIONALITEIT:
-#   - Installeert Home Assistant stack via Docker
-#   - MariaDB database voor Home Assistant
-#   - Mosquitto MQTT broker
-#   - Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor (auto detect USB + Bluetooth)
+#   - Home Assistant stack via Docker
+#   - MariaDB, Mosquitto, Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor
 #   - IT-Tools webinterface
-#   - WireGuard VPN met server- en clientconfiguratie + QR-code
-#   - DuckDNS integratie
-#   - CrowdSec monitoring
+#   - DuckDNS updater
+#   - WireGuard VPN server+client + QR-code
+#   - CrowdSec monitoring (poort 8134)
 #   - UFW firewall en SSH hardening
-#   - Automatische dagelijkse backups
+#   - Alt+Ctrl+Del uitgeschakeld
+#   - Dagelijkse backups
 #
 # VOORAF:
 #   - Root-toegang vereist
-#   - Internetverbinding nodig
-#   - Minimaal 14 GB vrije schijfruimte, 3 GB RAM
-#   - `.env` bestand met tijdzone, database credentials, DuckDNS token aanwezig
+#   - Internetverbinding
+#   - Min. 14GB vrije schijfruimte, 3GB RAM
+#   - `.env` met HA_TZ, database credentials, DuckDNS token aanwezig
 #
 # USAGE:
 #   sudo ./ha-install.sh [STATIC_IP/CIDR] [GATEWAY]
-#
 # EXAMPLE:
 #   sudo ./ha-install.sh 192.168.178.2/24 192.168.178.1
-#
-# PARAMETERS:
-#   [STATIC_IP/CIDR] - Optioneel: het statisch IP met subnet, bijv. 192.168.178.2/24
-#   [GATEWAY]        - Optioneel: het netwerk gateway IP, bijv. 192.168.178.1
-#
-# DEFAULTS:
-#   STATIC_IP=192.168.1.10/24
-#   GATEWAY=192.168.1.1
-#
-# USB AUTODETECT:
-#   - Zigbee, Z-Wave, BLE, RF, IR, P1 Smart Meter devices + Bluetooth dongle
-#   - Als geen USB aanwezig, worden deze containers niet gestart
-#
-# POST-INSTALL CHECKS:
-#   - Script toont Home Assistant, IT-Tools en CrowdSec URLs
-#   - WireGuard clientconfiguratie en QR-code
-#   - Overzicht van gedetecteerde USB-devices
-#   - Backup locatie en logbestand
-#
-# AANBEVELINGEN:
-#   - Controleer dat het gekozen IP niet conflicteert met andere apparaten
-#   - Zorg dat alle benodigde USB-devices aangesloten zijn voor automatische detectie
-#   - Het script is run-once; herhaald uitvoeren kan bestaande configuraties overschrijven
 # =====================================================
 
 set -e
@@ -65,19 +40,20 @@ echo "===================================================="
 STACK_DIR="$HOME/home-assistant"
 BACKUP_DIR="$STACK_DIR/backups"
 IT_TOOLS_DIR="$STACK_DIR/it-tools"
+
 MIN_DISK_GB=14
 MIN_RAM_MB=3000
-
-WG_PORT=51820
-WG_INTERFACE="wg0"
-WG_CONF_DIR="/etc/wireguard"
-WG_CLIENT_CONF="$STACK_DIR/wg-client.conf"
 
 STATIC_IP=${1:-"192.168.1.10/24"}
 GATEWAY=${2:-"192.168.1.1"}
 DNS1="9.9.9.9"
 DNS2="1.1.1.1"
 DNS3="8.8.8.8"
+
+WG_PORT=51820
+WG_INTERFACE="wg0"
+WG_CONF_DIR="/etc/wireguard"
+WG_CLIENT_CONF="$STACK_DIR/wg-client.conf"
 
 backup_file() {
     local file="$1"
@@ -93,11 +69,14 @@ backup_file() {
 # =====================================================
 FREE_DISK_GB=$(df / | tail -1 | awk '{print int($4/1024/1024)}')
 TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
-if [[ $FREE_DISK_GB -lt $MIN_DISK_GB || $TOTAL_RAM_MB -lt $MIN_RAM_MB ]]; then
-    echo "❌ Onvoldoende systeembronnen."
+if [[ $FREE_DISK_GB -lt $MIN_DISK_GB ]]; then
+    echo "❌ Onvoldoende vrije schijfruimte: $FREE_DISK_GB GB"
     exit 1
 fi
-
+if [[ $TOTAL_RAM_MB -lt $MIN_RAM_MB ]]; then
+    echo "❌ Onvoldoende RAM: $TOTAL_RAM_MB MB"
+    exit 1
+fi
 if [[ $EUID -ne 0 ]]; then
    echo "❌ Run als root."
    exit 1
@@ -152,7 +131,7 @@ systemctl restart systemd-networkd
 # =====================================================
 apt update && apt upgrade -y
 apt install -y apt-transport-https ca-certificates curl gnupg lsb-release \
-ufw openssh-server usbutils bluetooth fail2ban vim nano ripgrep fd-find fzf tmux git htop ncdu jq qrencode auditd unattended-upgrades \
+ufw openssh-server usbutils bluetooth bluez fail2ban vim nano ripgrep fd-find fzf tmux git htop ncdu jq qrencode auditd unattended-upgrades \
 duff rsync moreutils unzip mtr dnsutils tcpdump tshark lsof ipcalc lshw
 
 # =====================================================
@@ -170,8 +149,8 @@ usermod -aG docker "$SUDO_USER"
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 51820/udp
-ufw allow 8120:8140/tcp    # alle Docker services
-ufw allow 8135/tcp          # IT-Tools
+ufw allow 8120:8140/tcp
+ufw allow 8135/tcp   # IT-Tools
 ufw --force enable
 
 sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
@@ -190,7 +169,7 @@ systemctl enable fail2ban
 systemctl restart ssh
 
 # =====================================================
-# Disable ALT+CTRL+DEL
+# Alt+Ctrl+Del uitschakelen
 # =====================================================
 systemctl mask ctrl-alt-del.target
 
@@ -216,13 +195,13 @@ if [ -d /dev/serial/by-id ]; then
     done
 fi
 
-# Bluetooth dongle detecteren
-if lsusb | grep -qi bluetooth; then
-    BT_DEVS+=("bluetooth")
-fi
+# Detect Bluetooth adapters
+for BT in $(hciconfig -a | grep "BD Address" | awk '{print $3}'); do
+    BT_DEVS+=("$BT")
+done
 
 # =====================================================
-# Maak directories
+# Directories
 # =====================================================
 mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
 [ ${#ZIGBEE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/zigbee2mqtt"
@@ -233,7 +212,7 @@ mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
 [ ${#P1_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/p1monitor"
 
 # =====================================================
-# Docker Compose configuratie genereren
+# Docker Compose genereren
 # =====================================================
 cat > "$STACK_DIR/docker-compose.yml" <<EOF
 services:
@@ -244,7 +223,8 @@ services:
     restart: unless-stopped
     ports: ["8123:8123"]
     volumes: ["./homeassistant:/config"]
-    environment: ["TZ=\${HA_TZ}"]
+    environment:
+      - TZ=\${HA_TZ}
     depends_on:
       - mariadb
       - mosquitto
@@ -258,7 +238,8 @@ services:
       MYSQL_DATABASE: \${MYSQL_DATABASE}
       MYSQL_USER: \${MYSQL_USER}
       MYSQL_PASSWORD: \${MYSQL_PASSWORD}
-    volumes: ["./mariadb:/var/lib/mysql"]
+    volumes:
+      - ./mariadb:/var/lib/mysql
 
   mosquitto:
     image: eclipse-mosquitto
@@ -266,39 +247,6 @@ services:
     restart: unless-stopped
     ports: ["8120:1883"]
     volumes: ["./mosquitto:/mosquitto"]
-
-  zigbee2mqtt:
-    image: koenkk/zigbee2mqtt
-    container_name: zigbee2mqtt
-    restart: unless-stopped
-    ports: ["8121:8080"]
-    volumes: ["./zigbee2mqtt:/app/data"]
-    devices:
-EOF
-
-for idx in "${!ZIGBEE_DEVS[@]}"; do
-    echo "      - ${ZIGBEE_DEVS[$idx]}:/dev/ttyUSB$idx" >> "$STACK_DIR/docker-compose.yml"
-done
-
-cat >> "$STACK_DIR/docker-compose.yml" <<EOF
-    environment: ["TZ=\${HA_TZ}"]
-    depends_on: [mosquitto]
-
-  zwavejs2mqtt:
-    image: zwavejs/zwavejs2mqtt
-    container_name: zwavejs2mqtt
-    restart: unless-stopped
-    ports: ["8129:8091"]
-    volumes: ["./zwavejs2mqtt:/usr/src/app/store"]
-    devices:
-EOF
-
-for idx in "${!ZWAVE_DEVS[@]}"; do
-    echo "      - ${ZWAVE_DEVS[$idx]}:/dev/ttyUSB$idx" >> "$STACK_DIR/docker-compose.yml"
-done
-
-cat >> "$STACK_DIR/docker-compose.yml" <<EOF
-    environment: ["TZ=\${HA_TZ}"]
 
   esphome:
     image: ghcr.io/esphome/esphome
@@ -372,17 +320,17 @@ cat >> "$STACK_DIR/docker-compose.yml" <<EOF
     environment: ["INIT_ASSETS=1"]
 
   crowdsec:
-    image: crowdsecurity/crowdsec
+    image: crowdsecurity/crowdsec-ui:latest
     container_name: crowdsec
     restart: unless-stopped
     ports: ["8134:8080"]
-    volumes: ["./crowdsec:/var/lib/crowdsec"]
 
   it-tools:
     image: corentinth/it-tools:latest
     container_name: it-tools
     restart: unless-stopped
-    ports: ["8135:80"]
+    ports:
+      - "8135:80"
     volumes:
       - ./it-tools:/data
 
@@ -390,13 +338,15 @@ volumes:
   portainer_data:
 EOF
 
+echo "✅ docker-compose.yml aangemaakt"
+
 # =====================================================
 # Start containers
 # =====================================================
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
 # =====================================================
-# WireGuard installatie
+# WireGuard setup + QR
 # =====================================================
 apt install -y wireguard
 umask 077
@@ -438,22 +388,37 @@ EOF
 systemctl enable wg-quick@$WG_INTERFACE
 systemctl start wg-quick@$WG_INTERFACE
 
-# QR-code
 qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
 
 # =====================================================
-# Cronjob auto-backup
-# =====================================================
-echo "0 2 * * * $USER tar czf $BACKUP_DIR/stack-\$(date +\%Y\%m\%d).tar.gz -C $STACK_DIR ." | crontab -
-
-# =====================================================
-# Post-install overzicht
+# Post-install sanity checks
 # =====================================================
 IP=$(hostname -I | awk '{print $1}')
 echo "===================================================="
-echo "INSTALLATIE VOLTOOID 🎉"
+echo "✅ INSTALLATIE VOLTOOID 🎉"
 echo "Home Assistant:  http://${IP}:8123"
 echo "IT-Tools:        http://${IP}:8135"
 echo "CrowdSec:        http://${IP}:8134"
 echo "WireGuard client config: $WG_CLIENT_CONF"
-echo
+echo "QR-code hierboven weergegeven"
+echo "Backup directory: $BACKUP_DIR"
+echo "Zigbee devices:          ${#ZIGBEE_DEVS[@]}"
+echo "Z-Wave devices:          ${#ZWAVE_DEVS[@]}"
+echo "BLE devices:             ${#BLE_DEVS[@]}"
+echo "RF devices:              ${#RF_DEVS[@]}"
+echo "IR devices:              ${#IR_DEVS[@]}"
+echo "Smart Meter (P1) devices:${#P1_DEVS[@]}"
+echo "Bluetooth adapters:      ${#BT_DEVS[@]}"
+echo "===================================================="
+
+echo "Docker containers status:"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+echo "WireGuard interface status:"
+wg show $WG_INTERFACE
+
+echo "UFW status:"
+ufw status verbose
+
+echo "Installatie logbestand: $LOG_FILE"
+echo "===================================================="
