@@ -64,8 +64,8 @@ echo "===================================================="
 
 STACK_DIR="$HOME/home-assistant"
 BACKUP_DIR="$STACK_DIR/backups"
-MIN_DISK_GB=14
-MIN_RAM_MB=3000
+MIN_DISK_GB=15
+MIN_RAM_MB=4000
 
 WG_PORT=51820
 WG_INTERFACE="wg0"
@@ -102,6 +102,27 @@ fi
 if [[ $EUID -ne 0 ]]; then
    echo "❌ Run als root."
    exit 1
+fi
+
+
+# =====================================================
+# Check Debian versie
+# =====================================================
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    if [[ "$ID" != "debian" ]]; then
+        echo "❌ Dit script is alleen bedoeld voor Debian-based systemen."
+        exit 1
+    fi
+    if [[ "$VERSION_ID" != "13" ]]; then
+        echo "⚠️ Dit script is getest op Debian 13 (Bookworm)."
+        echo "Je draait momenteel Debian $VERSION_ID ($VERSION)."
+        read -p "Wil je doorgaan? (y/N): " proceed
+        [[ ! "$proceed" =~ ^[Yy]$ ]] && exit 1
+    fi
+else
+    echo "❌ Kan /etc/os-release niet vinden, onbekend OS."
+    exit 1
 fi
 
 # =====================================================
