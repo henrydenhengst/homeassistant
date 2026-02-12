@@ -104,7 +104,6 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-#!/bin/bash
 # =====================================================
 # DISK HEALTH DIAGNOSTIC SCRIPT (ALL DRIVES, FAIL-SAFE)
 # Debian 13+ compatible
