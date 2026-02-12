@@ -1,17 +1,14 @@
 #!/bin/bash
 # =====================================================
-# FULL HOME ASSISTANT HOMELAB INSTALLER
+# FULL HOME ASSISTANT HOMELAB STACK INSTALLER
 # Debian 13 Minimal - Secure Plug & Play Setup
 # =====================================================
 #
 # FUNCTIONALITEIT:
-#   - Installeert volledige Home Assistant stack via Docker:
-#       - Home Assistant
-#       - MariaDB
-#       - Mosquitto
-#       - Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor (USB autodetect)
-#       - ESPhome
-#       - Portainer, Watchtower, Dozzle, InfluxDB, Grafana, Netdata, Uptime-Kuma, Homer
+#   - Installeert Home Assistant stack via Docker
+#   - MariaDB database voor Home Assistant
+#   - Mosquitto MQTT broker
+#   - Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor (auto detect USB + Bluetooth)
 #   - IT-Tools webinterface
 #   - WireGuard VPN met server- en clientconfiguratie + QR-code
 #   - DuckDNS integratie
@@ -23,7 +20,7 @@
 #   - Root-toegang vereist
 #   - Internetverbinding nodig
 #   - Minimaal 14 GB vrije schijfruimte, 3 GB RAM
-#   - `.env` bestand met tijdzone, database credentials, DuckDNS token moet aanwezig zijn
+#   - `.env` bestand met tijdzone, database credentials, DuckDNS token aanwezig
 #
 # USAGE:
 #   sudo ./ha-install.sh [STATIC_IP/CIDR] [GATEWAY]
@@ -32,23 +29,27 @@
 #   sudo ./ha-install.sh 192.168.178.2/24 192.168.178.1
 #
 # PARAMETERS:
-#   [STATIC_IP/CIDR] - Optioneel: statisch IP met subnet, bijv. 192.168.178.2/24
+#   [STATIC_IP/CIDR] - Optioneel: het statisch IP met subnet, bijv. 192.168.178.2/24
 #   [GATEWAY]        - Optioneel: het netwerk gateway IP, bijv. 192.168.178.1
 #
+# DEFAULTS:
+#   STATIC_IP=192.168.1.10/24
+#   GATEWAY=192.168.1.1
+#
 # USB AUTODETECT:
-#   - Zigbee, Z-Wave, BLE, RF, IR, P1 Smart Meter, Bluetooth devices automatisch toegevoegd
+#   - Zigbee, Z-Wave, BLE, RF, IR, P1 Smart Meter devices + Bluetooth dongle
 #   - Als geen USB aanwezig, worden deze containers niet gestart
 #
 # POST-INSTALL CHECKS:
-#   - Toont Home Assistant, IT-Tools, CrowdSec URLs
+#   - Script toont Home Assistant, IT-Tools en CrowdSec URLs
 #   - WireGuard clientconfiguratie en QR-code
 #   - Overzicht van gedetecteerde USB-devices
 #   - Backup locatie en logbestand
 #
 # AANBEVELINGEN:
 #   - Controleer dat het gekozen IP niet conflicteert met andere apparaten
-#   - Zorg dat alle benodigde USB-devices aangesloten zijn voor autodetectie
-#   - Script is run-once; herhaald uitvoeren kan bestaande configuraties overschrijven
+#   - Zorg dat alle benodigde USB-devices aangesloten zijn voor automatische detectie
+#   - Het script is run-once; herhaald uitvoeren kan bestaande configuraties overschrijven
 # =====================================================
 
 set -e
@@ -64,7 +65,6 @@ echo "===================================================="
 STACK_DIR="$HOME/home-assistant"
 BACKUP_DIR="$STACK_DIR/backups"
 IT_TOOLS_DIR="$STACK_DIR/it-tools"
-
 MIN_DISK_GB=14
 MIN_RAM_MB=3000
 
@@ -165,17 +165,15 @@ apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker "$SUDO_USER"
 
 # =====================================================
-# UFW firewall
+# UFW + SSH + Fail2Ban
 # =====================================================
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow 51820/udp          # WireGuard
-ufw allow 8120:8140/tcp      # Alle Home Assistant & add-ons
+ufw allow 51820/udp
+ufw allow 8120:8140/tcp    # alle Docker services
+ufw allow 8135/tcp          # IT-Tools
 ufw --force enable
 
-# =====================================================
-# SSH hardening + Fail2Ban
-# =====================================================
 sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
 grep -q "^AllowUsers $MYSQL_USER" /etc/ssh/sshd_config || echo "AllowUsers $MYSQL_USER" >> /etc/ssh/sshd_config
 
@@ -190,6 +188,11 @@ EOF
 systemctl restart fail2ban
 systemctl enable fail2ban
 systemctl restart ssh
+
+# =====================================================
+# Disable ALT+CTRL+DEL
+# =====================================================
+systemctl mask ctrl-alt-del.target
 
 # =====================================================
 # USB + Bluetooth autodetect
@@ -213,11 +216,13 @@ if [ -d /dev/serial/by-id ]; then
     done
 fi
 
-# Bluetooth dongle detect
-BT_DEVS=($(hciconfig | grep -o 'hci[0-9]'))
+# Bluetooth dongle detecteren
+if lsusb | grep -qi bluetooth; then
+    BT_DEVS+=("bluetooth")
+fi
 
 # =====================================================
-# Directories aanmaken
+# Maak directories
 # =====================================================
 mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
 [ ${#ZIGBEE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/zigbee2mqtt"
@@ -228,7 +233,7 @@ mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
 [ ${#P1_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/p1monitor"
 
 # =====================================================
-# Docker Compose configuratie (alle containers behouden)
+# Docker Compose configuratie genereren
 # =====================================================
 cat > "$STACK_DIR/docker-compose.yml" <<EOF
 services:
@@ -239,8 +244,7 @@ services:
     restart: unless-stopped
     ports: ["8123:8123"]
     volumes: ["./homeassistant:/config"]
-    environment:
-      - TZ=\${HA_TZ}
+    environment: ["TZ=\${HA_TZ}"]
     depends_on:
       - mariadb
       - mosquitto
@@ -254,8 +258,7 @@ services:
       MYSQL_DATABASE: \${MYSQL_DATABASE}
       MYSQL_USER: \${MYSQL_USER}
       MYSQL_PASSWORD: \${MYSQL_PASSWORD}
-    volumes:
-      - ./mariadb:/var/lib/mysql
+    volumes: ["./mariadb:/var/lib/mysql"]
 
   mosquitto:
     image: eclipse-mosquitto
@@ -273,23 +276,127 @@ services:
     devices:
 EOF
 
-# Voeg automatisch Zigbee devices toe
 for idx in "${!ZIGBEE_DEVS[@]}"; do
     echo "      - ${ZIGBEE_DEVS[$idx]}:/dev/ttyUSB$idx" >> "$STACK_DIR/docker-compose.yml"
 done
-echo "    environment: [\"TZ=\${HA_TZ}\"]" >> "$STACK_DIR/docker-compose.yml"
-echo "    depends_on: [mosquitto]" >> "$STACK_DIR/docker-compose.yml"
 
-# Hier voeg je alle andere containers toe zoals Z-Wave, BLE, RF, IR, P1, ESPhome, Portainer, Watchtower, Dozzle, InfluxDB, Grafana, Netdata, Uptime-Kuma, Homer
-# Voeg DuckDNS container toe als extra service
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+    environment: ["TZ=\${HA_TZ}"]
+    depends_on: [mosquitto]
+
+  zwavejs2mqtt:
+    image: zwavejs/zwavejs2mqtt
+    container_name: zwavejs2mqtt
+    restart: unless-stopped
+    ports: ["8129:8091"]
+    volumes: ["./zwavejs2mqtt:/usr/src/app/store"]
+    devices:
+EOF
+
+for idx in "${!ZWAVE_DEVS[@]}"; do
+    echo "      - ${ZWAVE_DEVS[$idx]}:/dev/ttyUSB$idx" >> "$STACK_DIR/docker-compose.yml"
+done
+
+cat >> "$STACK_DIR/docker-compose.yml" <<EOF
+    environment: ["TZ=\${HA_TZ}"]
+
+  esphome:
+    image: ghcr.io/esphome/esphome
+    container_name: esphome
+    restart: unless-stopped
+    ports: ["8122:6052"]
+    volumes: ["./esphome:/config"]
+
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    restart: unless-stopped
+    ports: ["8124:9000","8125:9443"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    command: --cleanup --interval 86400
+
+  dozzle:
+    image: amir20/dozzle
+    container_name: dozzle
+    restart: unless-stopped
+    ports: ["8126:8080"]
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports: ["8127:8086"]
+    volumes: ["./influxdb:/var/lib/influxdb2"]
+
+  grafana:
+    image: grafana/grafana-oss
+    container_name: grafana
+    restart: unless-stopped
+    ports: ["8128:3000"]
+    volumes: ["./grafana:/var/lib/grafana"]
+
+  netdata:
+    image: netdata/netdata
+    container_name: netdata
+    restart: unless-stopped
+    ports: ["8131:19999"]
+    cap_add: [SYS_PTRACE]
+    security_opt: [apparmor:unconfined]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  uptime-kuma:
+    image: louislam/uptime-kuma
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports: ["8132:3001"]
+    volumes: ["./uptime-kuma:/app/data"]
+
+  homer:
+    image: b4bz/homer
+    container_name: homer
+    restart: unless-stopped
+    ports: ["8133:8080"]
+    volumes: ["./homer:/www/assets"]
+    environment: ["INIT_ASSETS=1"]
+
+  crowdsec:
+    image: crowdsecurity/crowdsec
+    container_name: crowdsec
+    restart: unless-stopped
+    ports: ["8134:8080"]
+    volumes: ["./crowdsec:/var/lib/crowdsec"]
+
+  it-tools:
+    image: corentinth/it-tools:latest
+    container_name: it-tools
+    restart: unless-stopped
+    ports: ["8135:80"]
+    volumes:
+      - ./it-tools:/data
+
+volumes:
+  portainer_data:
+EOF
 
 # =====================================================
-# Start alle Docker containers
+# Start containers
 # =====================================================
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
 # =====================================================
-# WireGuard setup
+# WireGuard installatie
 # =====================================================
 apt install -y wireguard
 umask 077
@@ -302,7 +409,6 @@ wg genkey | tee $WG_CONF_DIR/client_private.key | wg pubkey > $WG_CONF_DIR/clien
 CLIENT_PRIV=$(cat $WG_CONF_DIR/client_private.key)
 CLIENT_PUB=$(cat $WG_CONF_DIR/client_public.key)
 
-# Server en client configuratie
 cat > $WG_CONF_DIR/$WG_INTERFACE.conf <<EOF
 [Interface]
 Address = 10.10.0.1/24
@@ -324,7 +430,7 @@ DNS = 10.10.0.1
 
 [Peer]
 PublicKey = $SERVER_PUB
-Endpoint = \${DUCKDNS_SUB}.duckdns.org:$WG_PORT
+Endpoint = ${DUCKDNS_SUB}.duckdns.org:$WG_PORT
 AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 EOF
@@ -332,50 +438,22 @@ EOF
 systemctl enable wg-quick@$WG_INTERFACE
 systemctl start wg-quick@$WG_INTERFACE
 
-# QR-code tonen
+# QR-code
 qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
 
 # =====================================================
-# Post-install health check
+# Cronjob auto-backup
+# =====================================================
+echo "0 2 * * * $USER tar czf $BACKUP_DIR/stack-\$(date +\%Y\%m\%d).tar.gz -C $STACK_DIR ." | crontab -
+
+# =====================================================
+# Post-install overzicht
 # =====================================================
 IP=$(hostname -I | awk '{print $1}')
-check_containers() {
-    echo "🔍 Controleer status van Docker containers..."
-    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-    
-    echo "🔍 Test bereikbaarheid services..."
-    SERVICES=(8123 8134 8135)
-    for PORT in "${SERVICES[@]}"; do
-        if curl -s --max-time 3 http://$IP:$PORT >/dev/null; then
-            echo "✅ Service op poort $PORT is bereikbaar"
-        else
-            echo "⚠️  Service op poort $PORT niet bereikbaar"
-        fi
-    done
-
-    echo "🔍 Controleer WireGuard..."
-    if wg show "$WG_INTERFACE" >/dev/null 2>&1; then
-        echo "✅ WireGuard $WG_INTERFACE actief"
-    else
-        echo "⚠️  WireGuard $WG_INTERFACE niet actief"
-    fi
-}
-
-check_containers
-
 echo "===================================================="
 echo "INSTALLATIE VOLTOOID 🎉"
 echo "Home Assistant:  http://${IP}:8123"
 echo "IT-Tools:        http://${IP}:8135"
 echo "CrowdSec:        http://${IP}:8134"
 echo "WireGuard client config: $WG_CLIENT_CONF"
-echo "QR-code hierboven weergegeven"
-echo "Backup directory:        $BACKUP_DIR"
-echo "Zigbee devices:          ${#ZIGBEE_DEVS[@]}"
-echo "Z-Wave devices:          ${#ZWAVE_DEVS[@]}"
-echo "BLE devices:             ${#BLE_DEVS[@]}"
-echo "RF devices:              ${#RF_DEVS[@]}"
-echo "IR devices:              ${#IR_DEVS[@]}"
-echo "Smart Meter (P1) devices:${#P1_DEVS[@]}"
-echo "Bluetooth devices:       ${#BT_DEVS[@]}"
-echo "===================================================="
+echo
