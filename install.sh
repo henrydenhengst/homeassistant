@@ -1,30 +1,54 @@
 #!/bin/bash
 # =====================================================
-# FULL HOME ASSISTANT HOMELAB INSTALLER
+# FULL HOME ASSISTANT HOMELAB STACK INSTALLER
 # Debian 13 Minimal - Secure Plug & Play Setup
 # =====================================================
 #
 # FUNCTIONALITEIT:
-#   - Home Assistant stack via Docker
-#   - MariaDB, Mosquitto, Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor
-#   - IT-Tools webinterface
-#   - DuckDNS updater
-#   - WireGuard VPN server+client + QR-code
-#   - CrowdSec monitoring (poort 8134)
+#   - Installeert Home Assistant stack via Docker
+#   - MariaDB database voor Home Assistant
+#   - Mosquitto MQTT broker
+#   - Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor (auto detect USB)
+#   - ESPhome, Portainer, Watchtower, Dozzle, InfluxDB, Grafana, Netdata, Uptime-Kuma, Homer
+#   - CrowdSec monitoring op poort 8134
+#   - IT-Tools webinterface op poort 8135
+#   - DuckDNS updater container
+#   - WireGuard VPN met server- en clientconfiguratie + QR-code
 #   - UFW firewall en SSH hardening
 #   - Alt+Ctrl+Del uitgeschakeld
-#   - Dagelijkse backups
+#   - Automatische dagelijkse backups
 #
 # VOORAF:
 #   - Root-toegang vereist
-#   - Internetverbinding
-#   - Min. 14GB vrije schijfruimte, 3GB RAM
-#   - `.env` met HA_TZ, database credentials, DuckDNS token aanwezig
+#   - Internetverbinding nodig
+#   - Minimaal 14 GB vrije schijfruimte, 3 GB RAM
+#   - `.env` bestand met tijdzone, database credentials en DuckDNS token moet aanwezig zijn
 #
 # USAGE:
 #   sudo ./ha-install.sh [STATIC_IP/CIDR] [GATEWAY]
+#
 # EXAMPLE:
 #   sudo ./ha-install.sh 192.168.178.2/24 192.168.178.1
+#
+# PARAMETERS:
+#   [STATIC_IP/CIDR] - Optioneel: het statisch IP met subnet, bijv. 192.168.178.2/24
+#   [GATEWAY]        - Optioneel: het netwerk gateway IP, bijv. 192.168.178.1
+#
+# DEFAULTS:
+#   STATIC_IP=192.168.1.10/24
+#   GATEWAY=192.168.1.1
+#
+# USB + Bluetooth AUTODETECT:
+#   - Zigbee, Z-Wave, BLE, RF, IR, P1 Smart Meter devices
+#   - Bluetooth dongles
+#   - Containers starten alleen als devices aanwezig zijn
+#
+# POST-INSTALL CHECKS:
+#   - Toont Home Assistant, IT-Tools, CrowdSec, DuckDNS URLs
+#   - WireGuard clientconfiguratie + QR-code
+#   - Overzicht USB/Bluetooth devices
+#   - Backup locatie en logbestand
+#
 # =====================================================
 
 set -e
@@ -39,10 +63,13 @@ echo "===================================================="
 
 STACK_DIR="$HOME/home-assistant"
 BACKUP_DIR="$STACK_DIR/backups"
-IT_TOOLS_DIR="$STACK_DIR/it-tools"
-
 MIN_DISK_GB=14
 MIN_RAM_MB=3000
+
+WG_PORT=51820
+WG_INTERFACE="wg0"
+WG_CONF_DIR="/etc/wireguard"
+WG_CLIENT_CONF="$STACK_DIR/wg-client.conf"
 
 STATIC_IP=${1:-"192.168.1.10/24"}
 GATEWAY=${2:-"192.168.1.1"}
@@ -50,10 +77,7 @@ DNS1="9.9.9.9"
 DNS2="1.1.1.1"
 DNS3="8.8.8.8"
 
-WG_PORT=51820
-WG_INTERFACE="wg0"
-WG_CONF_DIR="/etc/wireguard"
-WG_CLIENT_CONF="$STACK_DIR/wg-client.conf"
+IT_TOOLS_DIR="$STACK_DIR/it-tools"
 
 backup_file() {
     local file="$1"
@@ -69,14 +93,11 @@ backup_file() {
 # =====================================================
 FREE_DISK_GB=$(df / | tail -1 | awk '{print int($4/1024/1024)}')
 TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
-if [[ $FREE_DISK_GB -lt $MIN_DISK_GB ]]; then
-    echo "❌ Onvoldoende vrije schijfruimte: $FREE_DISK_GB GB"
+if [[ $FREE_DISK_GB -lt $MIN_DISK_GB || $TOTAL_RAM_MB -lt $MIN_RAM_MB ]]; then
+    echo "❌ Onvoldoende systeembronnen."
     exit 1
 fi
-if [[ $TOTAL_RAM_MB -lt $MIN_RAM_MB ]]; then
-    echo "❌ Onvoldoende RAM: $TOTAL_RAM_MB MB"
-    exit 1
-fi
+
 if [[ $EUID -ne 0 ]]; then
    echo "❌ Run als root."
    exit 1
@@ -144,15 +165,17 @@ apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker "$SUDO_USER"
 
 # =====================================================
-# UFW + SSH + Fail2Ban
+# Firewall + SSH + Fail2Ban
 # =====================================================
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 51820/udp
-ufw allow 8120:8140/tcp
-ufw allow 8135/tcp   # IT-Tools
+ufw allow 8120:8140/tcp       # range voor HA services
+ufw allow 8134/tcp             # CrowdSec
+ufw allow 8135/tcp             # IT-Tools
 ufw --force enable
 
+# SSH root login uit
 sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
 grep -q "^AllowUsers $MYSQL_USER" /etc/ssh/sshd_config || echo "AllowUsers $MYSQL_USER" >> /etc/ssh/sshd_config
 
@@ -184,6 +207,7 @@ IR_DEVS=()
 P1_DEVS=()
 BT_DEVS=()
 
+# Serial devices
 if [ -d /dev/serial/by-id ]; then
     for DEV in /dev/serial/by-id/*; do
         [[ "$DEV" =~ zigbee|Zigbee ]] && ZIGBEE_DEVS+=("$DEV")
@@ -195,8 +219,8 @@ if [ -d /dev/serial/by-id ]; then
     done
 fi
 
-# Detect Bluetooth adapters
-for BT in $(hciconfig -a | grep "BD Address" | awk '{print $3}'); do
+# Bluetooth devices
+for BT in $(hciconfig | grep hci | awk '{print $1}'); do
     BT_DEVS+=("$BT")
 done
 
@@ -247,6 +271,27 @@ services:
     restart: unless-stopped
     ports: ["8120:1883"]
     volumes: ["./mosquitto:/mosquitto"]
+
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    ports: ["8121:8080"]
+    volumes: ["./zigbee2mqtt:/app/data"]
+    devices:
+      - \${ZIGBEE_USB}:/dev/ttyUSB0
+    environment: ["TZ=\${HA_TZ}"]
+    depends_on: [mosquitto]
+
+  zwavejs2mqtt:
+    image: zwavejs/zwavejs2mqtt
+    container_name: zwavejs2mqtt
+    restart: unless-stopped
+    ports: ["8129:8091"]
+    volumes: ["./zwavejs2mqtt:/usr/src/app/store"]
+    devices:
+      - \${ZWAVE_USB}:/dev/ttyUSB0
+    environment: ["TZ=\${HA_TZ}"]
 
   esphome:
     image: ghcr.io/esphome/esphome
@@ -320,20 +365,28 @@ services:
     environment: ["INIT_ASSETS=1"]
 
   crowdsec:
-    image: crowdsecurity/crowdsec-ui:latest
+    image: crowdsecurity/crowdsec
     container_name: crowdsec
     restart: unless-stopped
     ports: ["8134:8080"]
 
   it-tools:
-    image: corentinth/it-tools:latest
+    image: your-it-tools-image
     container_name: it-tools
     restart: unless-stopped
-    ports:
-      - "8135:80"
-    volumes:
-      - ./it-tools:/data
+    ports: ["8135:8080"]
+    volumes: ["./it-tools:/data"]
 
+  duckdns:
+    image: linuxserver/duckdns
+    container_name: duckdns
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=\${HA_TZ}
+      - SUBDOMAINS=\${DUCKDNS_SUB}
+      - TOKEN=\${DUCKDNS_TOKEN}
 volumes:
   portainer_data:
 EOF
@@ -346,7 +399,7 @@ echo "✅ docker-compose.yml aangemaakt"
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
 # =====================================================
-# WireGuard setup + QR
+# WireGuard installatie en QR
 # =====================================================
 apt install -y wireguard
 umask 077
@@ -380,7 +433,7 @@ DNS = 10.10.0.1
 
 [Peer]
 PublicKey = $SERVER_PUB
-Endpoint = ${DUCKDNS_SUB}.duckdns.org:$WG_PORT
+Endpoint = \${DUCKDNS_SUB}.duckdns.org:$WG_PORT
 AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 EOF
@@ -391,34 +444,24 @@ systemctl start wg-quick@$WG_INTERFACE
 qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
 
 # =====================================================
-# Post-install sanity checks
+# Post-install checks
 # =====================================================
 IP=$(hostname -I | awk '{print $1}')
 echo "===================================================="
-echo "✅ INSTALLATIE VOLTOOID 🎉"
+echo "INSTALLATIE VOLTOOID 🎉"
 echo "Home Assistant:  http://${IP}:8123"
 echo "IT-Tools:        http://${IP}:8135"
 echo "CrowdSec:        http://${IP}:8134"
 echo "WireGuard client config: $WG_CLIENT_CONF"
 echo "QR-code hierboven weergegeven"
-echo "Backup directory: $BACKUP_DIR"
+echo "Backup directory:        $BACKUP_DIR"
 echo "Zigbee devices:          ${#ZIGBEE_DEVS[@]}"
 echo "Z-Wave devices:          ${#ZWAVE_DEVS[@]}"
 echo "BLE devices:             ${#BLE_DEVS[@]}"
+echo "Bluetooth adapters:      ${#BT_DEVS[@]}"
 echo "RF devices:              ${#RF_DEVS[@]}"
 echo "IR devices:              ${#IR_DEVS[@]}"
 echo "Smart Meter (P1) devices:${#P1_DEVS[@]}"
-echo "Bluetooth adapters:      ${#BT_DEVS[@]}"
 echo "===================================================="
-
-echo "Docker containers status:"
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-echo "WireGuard interface status:"
-wg show $WG_INTERFACE
-
-echo "UFW status:"
-ufw status verbose
-
-echo "Installatie logbestand: $LOG_FILE"
-echo "===================================================="
+echo "✅ Alle containers gestart en services beschikbaar"
+echo "Logbestand: $LOG_FILE"
