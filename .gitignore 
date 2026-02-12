@@ -1,0 +1,29 @@
+# Environment variables
+.env
+
+# Docker persistent volumes / configs
+homeassistant/
+mosquitto/
+zigbee2mqtt/
+zwavejs2mqtt/
+ble2mqtt/
+rfxtrx/
+mqtt-ir/
+p1monitor/
+influxdb/
+grafana/
+uptime-kuma/
+it-tools/
+
+# WireGuard keys
+/etc/wireguard/*.key
+/etc/wireguard/*.conf
+
+# Logs
+*.log
+backups/
+
+# OS / editor files
+.DS_Store
+*.swp
+*.tmp
