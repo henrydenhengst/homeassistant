@@ -163,6 +163,52 @@ Deze repositories zijn handig voor uitbreidingen, add-ons en integraties binnen 
 - [Home Assistant Supervisor Add-ons](https://github.com/home-assistant/addons) – Extra add-ons maintained door de community.
 - [Home Assistant Naming Convention](https://github.com/Trikos/Home-Assistant-Naming-Convention) - Aanbevolen richtlijnen voor consistente naamgeving van entities, automations en dashboards, onmisbaar bij grotere setups.
 
+
+# Populaire Full Dashboard Projects voor Home Assistant
+
+Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt bekijken en gebruiken:
+
+## 1. Dwains Lovelace Dashboard
+- **GitHub:** [dwainscheeren/dwains-lovelace-dashboard](https://github.com/dwainscheeren/dwains-lovelace-dashboard)
+- **Beschrijving:** Een auto-genererend Lovelace-dashboard voor Home Assistant. Het bouwt automatisch een UI op basis van je HA-configuratie (areas/entities). Responsief voor desktop, tablet en mobiel.
+- **Kenmerken:**
+  - Automatische pagina’s gebaseerd op je entiteiten
+  - Modern en overzichtelijk design
+  - Geschikt voor touchscreens en tablets
+
+## 2. Madelena Hass Config Public
+- **GitHub:** [Madelena/hass-config-public](https://github.com/Madelena/hass-config-public)
+- **Beschrijving:** Een persoonlijke maar zeer populaire Home Assistant-config met geavanceerde dashboards en layouts.
+- **Kenmerken:**
+  - Minimalistische ambient displays
+  - Gedetailleerd “command center” dashboard
+  - Geoptimaliseerd voor overzicht en functionaliteit
+
+## 3. Home Assistant Mobile First
+- **GitHub:** [Clooos/Home-Assistant-Mobile-First](https://github.com/topics/home-assistant-dashboard)
+- **Beschrijving:** Een minimalistisch dashboard dat ontworpen is met mobile-first principes.
+- **Kenmerken:**
+  - Snel en overzichtelijk op mobiele apparaten
+  - Clean design
+  - Geschikt voor gebruikers die voornamelijk mobiel bedienen
+
+## 4. Adaptive Mushroom
+- **GitHub:** [Mushroom Dashboard](https://github.com/rafaelcaricio/mushroom-dashboard)
+- **Beschrijving:** Minimalistische, adaptieve dashboards gebaseerd op Mushroom Cards.
+- **Kenmerken:**
+  - Modern en visueel aantrekkelijk
+  - Past zich automatisch aan verschillende schermformaten aan
+  - Gebruikt Mushroom custom cards voor consistente styling
+
+## 5. Home Dashboard
+- **GitHub:** [salgrow/home-dashboard](https://github.com/topics/home-assistant-dashboard)
+- **Beschrijving:** Een modulair dashboard gericht op e-paper en smart displays.
+- **Kenmerken:**
+  - Diverse datapanels en integratie-opties
+  - Focus op overzichtelijkheid en maatwerk
+  - Ideaal voor vaste displays in huis
+
+
 > Tip: deze repositories zijn perfect voor wie zijn Home Assistant setup wil uitbreiden met integraties, add-ons en custom components.
 
 ## Services & Poorten Overzicht
