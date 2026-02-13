@@ -175,3 +175,21 @@ Om je homelab-stack nog krachtiger en vollediger te maken, zijn hier enkele nutt
 - [IT-Tools](https://github.com/corentinth/it-tools) – Diagnostics & monitoring tools voor servers en netwerk.
 
 > Tip: deze repos zijn optioneel, maar kunnen je homelab stack aanzienlijk uitbreiden en makkelijker beheren.
+
+
+## Aanbevolen Home Assistant GitHub Repositories
+
+Deze repositories zijn handig voor uitbreidingen, add-ons en integraties binnen je Home Assistant homelab:
+
+- [Home Assistant Core](https://github.com/home-assistant/core) – De officiële Home Assistant core.
+- [Home Assistant OS](https://github.com/home-assistant/operating-system) – Full OS images voor Home Assistant.
+- [Home Assistant Supervisor](https://github.com/home-assistant/supervisor) – Beheer van add-ons en system services.
+- [Home Assistant Add-ons](https://github.com/home-assistant/addons) – Officiële add-ons zoals MariaDB, Mosquitto, InfluxDB.
+- [Zigbee2MQTT](https://github.com/Koenkk/zigbee2mqtt) – Zigbee integratie via MQTT.
+- [Z-Wave JS](https://github.com/zwave-js/zwavejs2mqtt) – Z-Wave integratie via MQTT.
+- [ESPHome](https://github.com/esphome/esphome) – ESP32/ESP8266 automatisering en sensoren.
+- [HACS (Home Assistant Community Store)](https://github.com/hacs/integration) – Community add-ons en custom components.
+- [Home Assistant Frontend](https://github.com/home-assistant/frontend) – Het web-dashboard en interface.
+- [Home Assistant Supervisor Add-ons](https://github.com/home-assistant/addons) – Extra add-ons maintained door de community.
+
+> Tip: deze repositories zijn perfect voor wie zijn Home Assistant setup wil uitbreiden met integraties, add-ons en custom components.
