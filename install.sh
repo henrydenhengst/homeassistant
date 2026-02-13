@@ -338,6 +338,10 @@ cat > "$STACK_DIR/homepage/config/services.yaml" <<EOF
         description: Docker Management
 
 - Monitoring & Tools:
+    - Node-RED:
+        icon: nodered.png
+        href: http://$IP:2136
+        description: Automatisering Workflows
     - Beszel:
         icon: beszel.png
         href: http://$IP:8131
