@@ -1,5 +1,77 @@
 #!/bin/bash
+## =====================================================
+# 📝 HOMELAB INSTALLATIE SCRIPT – DOCUMENTATIE HEADER
 # =====================================================
+#
+# Systeemvereisten:
+#   - Debian 13 Minimal
+#   - Root-toegang
+#   - Internetverbinding
+#   - Minimaal 14 GB vrije schijfruimte, 3-4 GB RAM
+#
+# Script-functionaliteit:
+#   1. Installeert Home Assistant stack via Docker
+#   2. MariaDB database voor Home Assistant
+#   3. Mosquitto MQTT broker
+#   4. Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor (auto detect USB)
+#   5. ESPhome, Portainer, Watchtower, Dozzle, InfluxDB, Grafana, Beszel, Homepage, Uptime-Kuma, IT-Tools
+#   6. Netwerk hardening via UFW
+#   7. SSH beveiliging + Fail2Ban
+#   8. Automatische backups
+#   9. USB + Bluetooth autodetect
+#
+# Variabelen:
+#   STACK_DIR       - Hoofdmap voor alle containers en configs (default: $HOME/home-assistant)
+#   BACKUP_DIR      - Map voor backups
+#   IT_TOOLS_DIR    - Map voor IT-Tools container
+#   IP              - Detecteert automatisch het systeem IP
+#   ZIGBEE_USB      - Eerste Zigbee USB stick (indien aanwezig)
+#   ZWAVE_USB       - Eerste Z-Wave USB stick (indien aanwezig)
+#   STATIC_IP/GATEWAY - Optioneel voor statische netwerkconfiguratie
+#
+# Docker Containers & Functionaliteit:
+#   - homeassistant      : Smart Home Hub, poort 8123
+#   - mariadb            : Database backend
+#   - mosquitto          : MQTT broker, poort 8120
+#   - zigbee2mqtt        : Zigbee bridge, poort 8121
+#   - zwavejs2mqtt       : Z-Wave bridge, poort 8129
+#   - esphome            : ESP devices configuratie, poort 8122
+#   - portainer          : Docker beheer, poorten 8124/8125
+#   - watchtower         : Automatische container updates
+#   - dozzle             : Container logs visualisatie, poort 8126
+#   - influxdb           : Time-series database, poort 8127
+#   - grafana            : Visualisaties, poort 8128
+#   - beszel             : Monitoring dashboard, poort 8131
+#   - beszel-agent       : Monitor van deze host, werkt met beszel
+#   - homepage           : Centraal dashboard voor alle webapps, poort 8133
+#   - uptime-kuma        : Uptime monitor, poort 8132
+#   - it-tools           : Diverse IT-webtools, poort 8135
+#
+# Speciale aandachtspunten:
+#   1. Beszel-agent start mogelijk zonder Public Key en faalt, dit is normaal:
+#      * Ga naar Beszel Hub (poort 8131)
+#      * Kopieer je Public Key
+#      * Plak deze in je .env bestand
+#      * Herstart Beszel containers met: docker compose up -d
+#
+#   2. Homepage start met lege config map ./homepage/config:
+#      * Basis YAML-bestanden worden automatisch aangemaakt
+#      * Pas deze aan om je eigen links en icoontjes toe te voegen
+#
+#   3. Netwerk hardening (UFW):
+#      * Zorg dat poort 22 (SSH) open is voordat UFW actief wordt
+#      * Open poorten voor alle webapplicaties
+#
+# Post-installatie URLs:
+#   - Home Assistant   : http://$IP:8123
+#   - Beszel Dashboard : http://$IP:8131
+#   - Homepage         : http://$IP:8133
+#   - Uptime-Kuma      : http://$IP:8132
+#   - IT-Tools         : http://$IP:8135
+#
+# =====================================================
+# 📝 Einde Documentatie Header
+# ===================================================== =====================================================
 # FULL HOME ASSISTANT HOMELAB STACK INSTALLER
 # Debian 13 Minimal - Secure Plug & Play Setup
 # =====================================================
