@@ -192,4 +192,8 @@ Deze repositories zijn handig voor uitbreidingen, add-ons en integraties binnen 
 - [Home Assistant Frontend](https://github.com/home-assistant/frontend) – Het web-dashboard en interface.
 - [Home Assistant Supervisor Add-ons](https://github.com/home-assistant/addons) – Extra add-ons maintained door de community.
 
+### Best Practices & Conventies
+- 🧩 **Home Assistant Naming Convention** — https://github.com/Trikos/Home-Assistant-Naming-Convention  
+  Aanbevolen richtlijnen voor consistente naamgeving van entities, automations en dashboards — onmisbaar bij grotere setups.
+
 > Tip: deze repositories zijn perfect voor wie zijn Home Assistant setup wil uitbreiden met integraties, add-ons en custom components.
