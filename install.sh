@@ -293,6 +293,35 @@ mkdir -p "$STACK_DIR" "$BACKUP_DIR" \
          "$STACK_DIR/crowdsec" \
          "$STACK_DIR/duckdns"
 
+
+echo "📥 Iconen voor Homepage ophalen..."
+declare -A ICONS=(
+    ["home-assistant.png"]="https://raw.githubusercontent.com/home-assistant/brands/main/home-assistant/home-assistant.png"
+    ["portainer.png"]="https://raw.githubusercontent.com/portainer/portainer/main/app/images/icon.png"
+    ["nodered.png"]="https://raw.githubusercontent.com/node-red/node-red.github.io/master/images/red.png"
+    ["beszel.png"]="https://raw.githubusercontent.com/henrygd/beszel/main/assets/beszel.png"
+    ["uptime-kuma.png"]="https://raw.githubusercontent.com/louislam/uptime-kuma/develop/public/logo.png"
+    ["it-tools.png"]="https://raw.githubusercontent.com/corentinth/it-tools/main/assets/it-tools.png"
+    ["mosquitto.png"]="https://raw.githubusercontent.com/eclipse/mosquitto/master/src/mosquitto.png"
+    ["zigbee2mqtt.png"]="https://raw.githubusercontent.com/Koenkk/zigbee2mqtt.io/master/docs/img/logo.png"
+    ["zwavejs2mqtt.png"]="https://raw.githubusercontent.com/zwave-js/zwavejs2mqtt/master/docs/img/logo.png"
+    ["esphome.png"]="https://raw.githubusercontent.com/esphome/esphome-docs/main/docs/_static/logo.png"
+    ["watchtower.png"]="https://raw.githubusercontent.com/containrrr/watchtower/master/assets/logo.png"
+    ["dozzle.png"]="https://raw.githubusercontent.com/amir20/dozzle/master/docs/dozzle-logo.png"
+    ["influxdb.png"]="https://raw.githubusercontent.com/influxdata/influxdb/master/assets/images/influxdb-logo.png"
+    ["grafana.png"]="https://raw.githubusercontent.com/grafana/grafana/main/public/img/grafana_icon.svg"
+    ["crowdsec.png"]="https://raw.githubusercontent.com/crowdsecurity/crowdsec/main/docs/images/crowdsec.png"
+    ["duckdns.png"]="https://www.duckdns.org/assets/duckdns-icon.png"
+    ["p1monitor.png"]="https://raw.githubusercontent.com/nielstron/p1monitor/main/public/logo.png"
+)
+
+for ICON in "${!ICONS[@]}"; do
+    URL=${ICONS[$ICON]}
+    curl -sSL "$URL" -o "$STACK_DIR/homepage/config/$ICON" || echo "⚠️ Fout bij downloaden van $ICON"
+done
+
+
+
 # =====================================================
 # Home Assistant configuratie aanpassen voor MariaDB
 # =====================================================
