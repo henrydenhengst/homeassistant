@@ -645,6 +645,7 @@ declare -A SERVICES=(
     ["Zigbee2MQTT"]="8121"
     ["Z-Wave JS"]="8129"
     ["ESPHome"]="8122"
+    ["Node-RED"]="2136"          # ✅ Node-RED toegevoegd
     ["Portainer"]="8124"
     ["Watchtower"]="--"
     ["Dozzle"]="8126"
