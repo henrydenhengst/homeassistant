@@ -137,6 +137,33 @@ Deze repositories zijn handig voor uitbreidingen, add-ons en integraties binnen 
 
 > Tip: deze repositories zijn perfect voor wie zijn Home Assistant setup wil uitbreiden met integraties, add-ons en custom components.
 
+## Services & Poorten Overzicht
+
+| Poort   | Service                 | Beschrijving                                          |
+|--------|------------------------|------------------------------------------------------|
+| 8120   | Mosquitto (MQTT)       | MQTT broker voor device-communicatie                 |
+| 8121   | Zigbee2MQTT            | Zigbee integratie via MQTT                            |
+| 8122   | ESPHome                | ESP32/ESP8266 programmering en device beheer        |
+| 8123   | Home Assistant         | Centrale smart home hub                               |
+| 8124   | Portainer (HTTP)       | Docker management interface                           |
+| 8125   | Portainer (HTTPS)      | Docker management interface                           |
+| 8126   | Dozzle                 | Real-time container logs                              |
+| 8127   | InfluxDB               | Metrics database                                      |
+| 8128   | Grafana                | Dashboard visualisatie van metrics                    |
+| 8129   | Z-Wave JS              | Z-Wave integratie via MQTT                             |
+| 8130*  | BLE2MQTT               | BLE devices via MQTT                                  |
+| 8131*  | MQTT-IR / Beszel Hub   | IR devices via MQTT / real-time monitoring dashboard |
+| 8132*  | P1 Monitor / Uptime-Kuma | Slimme meter uitlezing / uptime monitoring         |
+| 8133   | Homepage               | Startpagina/dashboard voor web-apps                  |
+| 8134   | CrowdSec               | Security & threat monitoring                           |
+| 8135   | IT-Tools               | Diagnostics & monitoring tools                        |
+| --     | Watchtower             | Automatische container updates                        |
+| --     | Beszel Agent           | Metric agent van de host                               |
+| --     | DuckDNS                | Dynamische DNS update service                          |
+
+\* Poorten kunnen verschillen afhankelijk van device-configuratie.  
+
+> Tip: Services met “--” hebben geen publieke poort; toegang is via andere dashboards of de host.
 
 
 ---
