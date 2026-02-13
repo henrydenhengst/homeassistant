@@ -11,9 +11,9 @@ set -e
 # 1. Configure static IP
 # ----------------------------
 # Pas deze waarden aan voor je netwerk
-STATIC_IP="192.168.1.50"
-ROUTER_IP="192.168.1.1"
-DNS_SERVER="8.8.8.8"
+STATIC_IP="192.168.178.3"
+ROUTER_IP="192.168.178.1"
+DNS_SERVER="9.9.9.9" "1.1.1.1" "8.8.8.8"
 INTERFACE="eth0"  # kies eth0 of wlan0
 
 echo "==> Configuring static IP for $INTERFACE: $STATIC_IP"
