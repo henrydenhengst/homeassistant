@@ -344,7 +344,7 @@ systemctl restart ssh
 # Docker Compose genereren
 # =====================================================
 cat > "$STACK_DIR/docker-compose.yml" <<EOF
-version: '3'
+
 services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
