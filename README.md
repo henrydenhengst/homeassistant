@@ -159,3 +159,19 @@ Additional services:
 - Minimum systeemvereisten: 15 GB vrije schijfruimte, 4 GB RAM.
 - Hardware zoals Zigbee, Z-Wave of BLE wordt automatisch gedetecteerd.
 - Alle logs en foutmeldingen worden weggeschreven naar `$HOME/ha-install.log`.
+
+## Aanbevolen Aanvullende GitHub Repositories
+
+Om je homelab-stack nog krachtiger en vollediger te maken, zijn hier enkele nuttige repositories:
+
+- [Zigbee2MQTT](https://github.com/Koenkk/zigbee2mqtt) – Voor Zigbee integratie en device management.
+- [Z-Wave JS](https://github.com/zwave-js/zwavejs2mqtt) – Z-Wave controller en MQTT bridge.
+- [ESPHome](https://github.com/esphome/esphome) – Voor het programmeren en beheren van ESP32/ESP8266 devices.
+- [Home Assistant Community Add-ons](https://github.com/home-assistant/addons) – Officiële en community add-ons.
+- [Uptime-Kuma](https://github.com/louislam/uptime-kuma) – Self-hosted monitoring van uptime en alerts.
+- [Portainer CE](https://github.com/portainer/portainer) – Webinterface voor Docker beheer.
+- [Beszel](https://github.com/henrygd/beszel) – Lightweight real-time monitoring dashboard.
+- [Homepage](https://github.com/gethomepage/homepage) – Startpagina/dashboard voor al je web-apps.
+- [IT-Tools](https://github.com/corentinth/it-tools) – Diagnostics & monitoring tools voor servers en netwerk.
+
+> Tip: deze repos zijn optioneel, maar kunnen je homelab stack aanzienlijk uitbreiden en makkelijker beheren.
