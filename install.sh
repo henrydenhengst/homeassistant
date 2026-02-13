@@ -3,53 +3,6 @@
 # FULL HOME ASSISTANT HOMELAB STACK INSTALLER
 # Debian 13 Minimal - Secure Plug & Play Setup
 # =====================================================
-#
-# FUNCTIONALITEIT:
-#   - Installeert Home Assistant stack via Docker
-#   - MariaDB database voor Home Assistant
-#   - Mosquitto MQTT broker
-#   - Zigbee2MQTT, Z-Wave JS, BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor (auto detect USB)
-#   - ESPhome, Portainer, Watchtower, Dozzle, InfluxDB, Grafana, Netdata, Uptime-Kuma, Homer
-#   - CrowdSec monitoring op poort 8134
-#   - IT-Tools webinterface op poort 8135
-#   - DuckDNS updater container
-#   - WireGuard VPN met server- en clientconfiguratie + QR-code
-#   - UFW firewall en SSH hardening
-#   - Alt+Ctrl+Del uitgeschakeld
-#   - Automatische dagelijkse backups
-#
-# VOORAF:
-#   - Root-toegang vereist
-#   - Internetverbinding nodig
-#   - Minimaal 14 GB vrije schijfruimte, 3 GB RAM
-#   - `.env` bestand met tijdzone, database credentials en DuckDNS token moet aanwezig zijn
-#
-# USAGE:
-#   sudo ./ha-install.sh [STATIC_IP/CIDR] [GATEWAY]
-#
-# EXAMPLE:
-#   sudo ./ha-install.sh 192.168.178.2/24 192.168.178.1
-#
-# PARAMETERS:
-#   [STATIC_IP/CIDR] - Optioneel: het statisch IP met subnet, bijv. 192.168.178.2/24
-#   [GATEWAY]        - Optioneel: het netwerk gateway IP, bijv. 192.168.178.1
-#
-# DEFAULTS:
-#   STATIC_IP=192.168.1.10/24
-#   GATEWAY=192.168.1.1
-#
-# USB + Bluetooth AUTODETECT:
-#   - Zigbee, Z-Wave, BLE, RF, IR, P1 Smart Meter devices
-#   - Bluetooth dongles
-#   - Containers starten alleen als devices aanwezig zijn
-#
-# POST-INSTALL CHECKS:
-#   - Toont Home Assistant, IT-Tools, CrowdSec, DuckDNS URLs
-#   - WireGuard clientconfiguratie + QR-code
-#   - Overzicht USB/Bluetooth devices
-#   - Backup locatie en logbestand
-#
-# =====================================================
 
 set -e
 set -o pipefail
@@ -66,11 +19,6 @@ STACK_DIR="$HOME/home-assistant"
 BACKUP_DIR="$STACK_DIR/backups"
 MIN_DISK_GB=15
 MIN_RAM_MB=4000
-
-WG_PORT=51820
-WG_INTERFACE="wg0"
-WG_CONF_DIR="/etc/wireguard"
-WG_CLIENT_CONF="$STACK_DIR/wg-client.conf"
 
 STATIC_IP=${1:-"192.168.1.10/24"}
 GATEWAY=${2:-"192.168.1.1"}
@@ -105,406 +53,40 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # =====================================================
-# DISK HEALTH DIAGNOSTIC SCRIPT (ALL DRIVES, FAIL-SAFE)
-# Debian 13+ compatible
-# =====================================================
-
-apt update && apt install -y smartmontools lm-sensors stress-ng lsblk usbutils jq curl
-
-# Install smartmontools if missing
-if ! command -v smartctl &> /dev/null; then
-    echo "📦 smartmontools niet gevonden. Installeren..."
-    apt update && apt install -y smartmontools
-fi
-
-echo "===================================================="
-echo "🔍 SCHIJF GEZONDHEIDSANALYSE"
-echo "===================================================="
-
-# Find all physical drives
-DISKS=$(lsblk -dno NAME,MODEL,SIZE | grep -vE "loop|boot|rpmb|sr")
-
-# Initialize problem counter
-PROBLEMS_FOUND=0
-PROBLEM_DISKS=()
-
-while read -r NAME MODEL SIZE; do
-    DEV="/dev/$NAME"
-    echo -e "\n💾 Schijf: $DEV [$MODEL - $SIZE]"
-    echo "----------------------------------------------------"
-
-    # SMART overall-health
-    STATUS=$(smartctl -H "$DEV" 2>/dev/null | awk -F': ' '/overall-health/ {gsub(/ /,"",$2); print $2}')
-
-    if [[ -z "$STATUS" ]]; then
-        echo "⚠️  SMART-status niet beschikbaar, mogelijk NVMe of nieuw model"
-        STATUS="UNKNOWN"
-    fi
-
-    if [[ "$STATUS" != "PASSED" && "$STATUS" != "OK" && "$STATUS" != "UNKNOWN" ]]; then
-        echo -e "\033[0;31m❌ KRITIEKE FOUT: $DEV status = $STATUS\033[0m"
-        PROBLEMS_FOUND=$((PROBLEMS_FOUND + 1))
-        PROBLEM_DISKS+=("$DEV - $STATUS")
-    fi
-
-    # Get attributes
-    ATTRS=$(smartctl -A "$DEV" 2>/dev/null)
-    
-    # SATA/SSD
-    REALLOC=$(echo "$ATTRS" | awk '/Reallocated_Sector_Ct/ {print $10}')
-    PENDING=$(echo "$ATTRS" | awk '/Current_Pending_Sector/ {print $10}')
-    
-    if [[ "$REALLOC" -gt 0 || "$PENDING" -gt 0 ]]; then
-        echo -e "\033[0;31m❌ Fysieke fouten gedetecteerd op $DEV\033[0m"
-        echo "   Reallocated Sectors: ${REALLOC:-0}"
-        echo "   Pending Sectors: ${PENDING:-0}"
-        PROBLEMS_FOUND=$((PROBLEMS_FOUND + 1))
-        PROBLEM_DISKS+=("$DEV - fysieke schade (Realloc:$REALLOC Pending:$PENDING)")
-    fi
-
-    # NVMe wear / temp
-    if [[ "$NAME" == nvme* ]]; then
-        TEMP=$(echo "$ATTRS" | awk '/Temperature/ {print $2 " " $3}')
-        WEAR=$(echo "$ATTRS" | awk -F': ' '/Percentage Used/ {print $2}')
-        echo "🌡️  Temperatuur: $TEMP"
-        echo "📉 Slijtage (Used): ${WEAR:-0}%"
-    else
-        HOURS=$(echo "$ATTRS" | awk '/Power_On_Hours/ {print $10}')
-        echo "🕒 Branduren: ${HOURS:-0} uur"
-        echo "🧱 Sectoren: Geen kritieke fouten gedetecteerd" 
-    fi
-
-done <<< "$DISKS"
-
-echo -e "\n===================================================="
-if [[ $PROBLEMS_FOUND -eq 0 ]]; then
-    echo "✅ Alle schijven lijken gezond."
-else
-    echo -e "\033[0;31m⚠️  Problemen gedetecteerd op $PROBLEMS_FOUND schijf(en):\033[0m"
-    for disk in "${PROBLEM_DISKS[@]}"; do
-        echo " - $disk"
-    done
-    echo "❗ Maak direct backups van deze schijven!"
-fi
-echo "===================================================="
-
-
-
-# =====================================================
-# MEMORY CHECK + OPTIONELE STRESSTEST
-# =====================================================
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
-
-echo -e "\n🧠 Stap 1b: Geheugenintegriteit controleren (ECC/Kernel)..."
-
-# Check systeemlogs op geheugenfouten
-MEM_ERRORS=$(dmesg --ctime | grep -iE "memory error|ECC error|Corrected error|Uncorrected error" || true)
-
-if [[ -n "$MEM_ERRORS" ]]; then
-    echo -e "${RED}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    echo "❌ KRITIEKE FOUT: Geheugenfouten gedetecteerd!"
-    echo "$MEM_ERRORS" | tail -n 5
-    echo "Uitleg: Je RAM-geheugen is onbetrouwbaar. Dit zal leiden tot crashes en corrupte databases."
-    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${NC}"
-    echo "$MEM_ERRORS" >> "$LOG_FILE"
-    exit 1
-else
-    echo -e "${GREEN}✅ Geen geheugenfouten gevonden in systeemlogs.${NC}"
-fi
-
-# =====================================================
-# Optionele actieve RAM-test met memtester
-# =====================================================
-read -p "Wil je een actieve RAM-test uitvoeren met memtester? (aanbevolen bij nieuw ECC RAM) [y/N]: " do_memtest
-if [[ "$do_memtest" =~ ^[Yy]$ ]]; then
-
-    if ! command -v memtester &> /dev/null; then
-        echo "📦 memtester niet gevonden. Installeren..."
-        apt update && apt install -y memtester
-    fi
-
-    TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
-    # Test 25% van RAM of max 8GB
-    TEST_MB=$(( TOTAL_RAM_MB / 4 ))
-    (( TEST_MB > 8192 )) && TEST_MB=8192
-
-    RUNS=1  # Aantal passes, kan verhoogd worden voor diepere test
-    echo "🧪 RAM-test starten: $TEST_MB MB, $RUNS run(s). Dit kan enkele minuten duren..."
-
-    TMP_MEM_LOG=$(mktemp)
-    for i in $(seq 1 $RUNS); do
-        echo "🔹 Run $i van $RUNS"
-        memtester "${TEST_MB}M" 1 | tee -a "$TMP_MEM_LOG"
-    done
-
-    # Check op fouten
-    if grep -q -i "FAIL" "$TMP_MEM_LOG"; then
-        echo -e "${RED}❌ RAM-fouten gedetecteerd tijdens memtester!${NC}"
-        tail -n 20 "$TMP_MEM_LOG"
-        cat "$TMP_MEM_LOG" >> "$LOG_FILE"
-        rm "$TMP_MEM_LOG"
-        exit 1
-    else
-        echo -e "${GREEN}✅ RAM-test geslaagd, geen fouten gevonden.${NC}"
-        cat "$TMP_MEM_LOG" >> "$LOG_FILE"
-        rm "$TMP_MEM_LOG"
-    fi
-fi
-
-# =====================================================
-# FINAL HARDWARE GUARDIAN FOR DEBIAN 13
-# =====================================================
-
-echo -e "🛡️  Starten van de Finale Hardware Guard..."
-
-# 1. Geheugen (RAM) Check
-MEM_ERR=$(dmesg | grep -iE "memory error|ECC|EDAC" || true)
-if [[ -n "$MEM_ERR" ]]; then
-    echo "❌ RAM FOUT: Hardwarefouten gevonden in geheugenlogs."
-    exit 1
-fi
-
-# 2. Temperatuur Check
-if command -v sensors &> /dev/null; then
-    TEMP=$(sensors | grep "Package id 0:" | awk '{print $4}' | tr -d '+°C' | cut -d. -f1)
-    if [[ -n "$TEMP" && "$TEMP" -gt 80 ]]; then
-        echo "⚠️  CPU is te heet ($TEMP°C). Zorg voor betere koeling."
-        exit 1
-    fi
-fi
-
-# 3. Voeding/Undervoltage Check (voor Pi/ARM)
-if command -v vcgencmd &> /dev/null; then
-    UNDERVOLT=$(vcgencmd get_throttled | grep -v "0x0" || true)
-    if [[ -n "$UNDERVOLT" ]]; then
-        echo "❌ VOEDING FOUT: Undervoltage gedetecteerd. Vervang je adapter!"
-        exit 1
-    fi
-fi
-
-# 4. CPU Stabiliteit (Korte Stress-test)
-echo "⚡ CPU Stress-test uitvoeren (15 sec)..."
-if command -v stress-ng &> /dev/null; then
-    stress-ng --cpu $(nproc) -t 15s --quiet || { echo "❌ CPU onstabiel onder last"; exit 1; }
-fi
-
-echo "✅ Hardware is 100% stabiel bevonden. Installatie start nu..."
-
-# =====================================================
-# Check Debian versie
+# Debian versie check
 # =====================================================
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     if [[ "$ID" != "debian" ]]; then
-        echo "❌ Dit script is alleen bedoeld voor Debian-based systemen."
+        echo "❌ Alleen Debian-based systemen ondersteund."
         exit 1
     fi
     if [[ "$VERSION_ID" != "13" ]]; then
-        echo "⚠️ Dit script is getest op Debian 13 (Bookworm)."
-        echo "Je draait momenteel Debian $VERSION_ID ($VERSION)."
+        echo "⚠️ Getest op Debian 13 (Bookworm)."
         read -p "Wil je doorgaan? (y/N): " proceed
         [[ ! "$proceed" =~ ^[Yy]$ ]] && exit 1
     fi
 else
-    echo "❌ Kan /etc/os-release niet vinden, onbekend OS."
+    echo "❌ Kan /etc/os-release niet vinden."
     exit 1
 fi
 
 # =====================================================
-# Laad .env
-# =====================================================
-if [ ! -f "$STACK_DIR/.env" ]; then
-    echo "❌ Geen .env bestand gevonden in $STACK_DIR"
-    exit 1
-fi
-export $(grep -v '^#' "$STACK_DIR/.env" | xargs)
-chmod 600 "$STACK_DIR/.env"
-chown "$SUDO_USER:$SUDO_USER" "$STACK_DIR/.env"
-
-# =====================================================
-# Netwerkconfiguratie
-# =====================================================
-# =====================================================
-# Netwerkbeheer detectie & statische IP configuratie
-# =====================================================
-
-echo ""
-echo "Detecteer netwerkbeheer..."
-
-# Detecteer eerste “echte” netwerkinterface
-INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -Ev '^(lo|docker|br|veth|wg)' | head -n1)
-
-if [ -z "$INTERFACE" ]; then
-    echo "❌ Geen geschikte netwerkinterface gevonden (lo, docker, bridge etc. uitgesloten)."
-    echo "Huidige interfaces:"
-    ip link show
-    echo ""
-    read -p "Wil je handmatig een interface opgeven? (of druk Enter om netwerkconfiguratie over te slaan): " manual_if
-    if [ -n "$manual_if" ]; then
-        INTERFACE="$manual_if"
-    else
-        echo "Netwerkconfiguratie overgeslagen."
-        SKIP_NETWORK_CONFIG=true
-    fi
-fi
-
-echo "Gedetecteerde primaire interface: ${INTERFACE:-<geen>}"
-
-# =============================================
-# Netplan check
-# =============================================
-
-NETPLAN_ACTIVE=false
-SKIP_NETWORK_CONFIG=false
-
-if command -v netplan >/dev/null 2>&1; then
-    if [ -d /etc/netplan ] && compgen -G "/etc/netplan/*.yaml" >/dev/null; then
-        NETPLAN_ACTIVE=true
-        echo "⚠️ Netplan is aanwezig en heeft configuratiebestanden → waarschijnlijk actief"
-    else
-        echo "ℹ️ Netplan is geïnstalleerd, maar geen .yaml bestanden gevonden in /etc/netplan"
-    fi
-else
-    echo "ℹ️ Netplan niet geïnstalleerd"
-fi
-
-if [ "$NETPLAN_ACTIVE" = true ]; then
-    echo ""
-    echo "=============================================================="
-    echo " WAARSCHUWING: Netplan lijkt actief te zijn op dit systeem"
-    echo " Automatische statische IP configuratie kan genegeerd of overschreven worden"
-    echo "=============================================================="
-    echo ""
-    read -p "Toch proberen systemd-networkd in te stellen? (y/N): " proceed
-    if [[ ! "$proceed" =~ ^[Yy]$ ]]; then
-        echo "Netplan configuratie overgeslagen. Netwerk blijft ongewijzigd."
-        SKIP_NETWORK_CONFIG=true
-    else
-        echo "Doorgaan met systemd-networkd instellingen (risico op conflict aanwezig)"
-    fi
-fi
-
-# =============================================
-# systemd-networkd instellen (alleen als niet geskipt)
-# =============================================
-
-if [ "${SKIP_NETWORK_CONFIG:-false}" != true ]; then
-
-    echo "Activeren van systemd-networkd + systemd-resolved..."
-    if ! systemctl enable --now systemd-networkd systemd-resolved 2>/dev/null; then
-        echo "❌ Kan systemd-networkd of systemd-resolved niet activeren/starten"
-        systemctl status systemd-networkd systemd-resolved --lines=0
-        echo ""
-        read -p "Doorgaan ondanks fout? (y/N): " force
-        [[ ! "$force" =~ ^[Yy]$ ]] && exit 1
-    fi
-
-    # resolv.conf correct koppelen
-    CURRENT_RESOLV=$(readlink -f /etc/resolv.conf 2>/dev/null || echo "")
-    if [ "$CURRENT_RESOLV" = "/run/systemd/resolve/stub-resolv.conf" ] || [ "$CURRENT_RESOLV" = "/run/systemd/resolve/resolv.conf" ]; then
-        echo "ℹ️ resolv.conf is al correct gekoppeld aan systemd-resolved"
-    else
-        echo "Symlink /etc/resolv.conf → /run/systemd/resolve/resolv.conf"
-        ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
-    fi
-
-    # =============================================
-    # Statisch .network bestand aanmaken
-    # =============================================
-
-    NETWORK_FILE="/etc/systemd/network/20-${INTERFACE}-static.network"
-
-    if [ -f "$NETWORK_FILE" ]; then
-        echo "Bestaand configuratiebestand gevonden: $NETWORK_FILE"
-        backup_file "$NETWORK_FILE"
-    fi
-
-    echo "Statisch IP configureren: $STATIC_IP via $INTERFACE"
-
-    cat > "$NETWORK_FILE" <<EOF
-[Match]
-Name=$INTERFACE
-
-[Network]
-DHCP=no
-Address=$STATIC_IP
-Gateway=$GATEWAY
-DNS=$DNS1 $DNS2 $DNS3
-
-# Optioneel: link-local uitzetten als je puur statisch IPv4 wilt
-# LinkLocalAddressing=no
-EOF
-
-    echo "Configuratiebestand geschreven: $NETWORK_FILE"
-
-    # Herstarten en korte validatie
-    echo "Netwerkdiensten herstarten..."
-    systemctl restart systemd-networkd
-
-    sleep 3
-
-    # Simpele check
-    CURRENT_IP=$(ip -4 addr show dev "$INTERFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1)
-    if [ "${CURRENT_IP}" = "${STATIC_IP%/*}" ]; then
-        echo "✅ Statisch IP succesvol toegepast: $CURRENT_IP"
-    else
-        echo "⚠️  Waarschuwing: verwachte IP ${STATIC_IP%/*} niet gezien"
-        echo "Huidig IP op $INTERFACE: ${CURRENT_IP:-geen}"
-        ip addr show dev "$INTERFACE"
-    fi
-
-else
-    echo "Netwerkconfiguratie overgeslagen (zoals gevraagd of vanwege netplan)."
-fi
-
-# =====================================================
-# Systeem update + tools
+# Install basis tools
 # =====================================================
 apt update && apt upgrade -y
 apt install -y apt-transport-https ca-certificates curl gnupg lsb-release \
 ufw openssh-server usbutils bluetooth bluez fail2ban vim nano ripgrep fd-find fzf tmux git htop ncdu jq qrencode auditd unattended-upgrades \
 duff rsync moreutils unzip mtr dnsutils tcpdump tshark lsof ipcalc lshw
 
-
-echo "===================================================="
-echo "🔍 USB SYSTEEM ANALYSE"
-echo "===================================================="
-
-TOTAL_ROOT_HUBS=$(find /sys/bus/usb/devices/usb* -maxdepth 0 | wc -l)
-TOTAL_PORTS=$(cat /sys/bus/usb/devices/*/max_child 2>/dev/null | awk '{sum+=$1} END {print sum}')
-
-USB2_COUNT=$(lsusb | grep -i "2.0 root hub" | wc -l)
-USB3_COUNT=$(lsusb | grep -iE "3.0|3.1|3.2 root hub" | wc -l)
-
-echo -e "📦 Hardware Capaciteit:"
-echo -e "   - Totaal aantal logische poorten: $TOTAL_PORTS"
-echo -e "   - Aantal USB 2.0 controllers:    $USB2_COUNT"
-echo -e "   - Aantal USB 3.0+ controllers:   $USB3_COUNT"
-
-CONNECTED=$(lsusb | grep -v "root hub" | wc -l)
-echo -e "\n🔗 Status:"
-echo -e "   - Momenteel verbonden apparaten: $CONNECTED"
-echo -e "   - Details:"
-lsusb | grep -v "root hub" | sed 's/^/      /'
-
-echo -e "\n⚕️  Gezondheidscheck (laatste 500 kernel meldingen):"
-ERRORS=$(dmesg --ctime | tail -n 500 | grep -iE "usb.*(error|disconnect|over-current|rejection)" | grep -v "new USB device")
-if [ -z "$ERRORS" ]; then
-    echo "   ✅ Geen USB-fouten gedetecteerd in de logs."
-else
-    echo "   ⚠️  Mogelijke problemen gevonden:"
-    echo "$ERRORS" | tail -n 5 | sed 's/^/      /'
-fi
-
-echo -e "\n🌳 USB boomstructuur:"
-lsusb -t
-
-echo "===================================================="
-
-
+# =====================================================
+# Netwerk Hardening (UFW)
+# =====================================================
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp          # SSH
+ufw allow 8120:8140/tcp   # Home Assistant + services range
+ufw --force enable
 
 # =====================================================
 # Docker installatie
@@ -516,34 +98,10 @@ apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker "$SUDO_USER"
 
 # =====================================================
-# Firewall + SSH + Fail2Ban
+# Directories
 # =====================================================
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 51820/udp
-ufw allow 8120:8140/tcp       # range voor HA services
-ufw --force enable
-
-# SSH root login uit
-sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
-grep -q "^AllowUsers $MYSQL_USER" /etc/ssh/sshd_config || echo "AllowUsers $MYSQL_USER" >> /etc/ssh/sshd_config
-
-tee /etc/fail2ban/jail.d/ssh.local > /dev/null <<EOF
-[sshd]
-enabled = true
-maxretry = 3
-bantime = 3600
-findtime = 600
-EOF
-
-systemctl restart fail2ban
-systemctl enable fail2ban
-systemctl restart ssh
-
-# =====================================================
-# Alt+Ctrl+Del uitschakelen
-# =====================================================
-systemctl mask ctrl-alt-del.target
+mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
+mkdir -p "$STACK_DIR/homepage/config"
 
 # =====================================================
 # USB + Bluetooth autodetect
@@ -568,8 +126,7 @@ if [ -d /dev/serial/by-id ]; then
     done
 fi
 
-# Bluetooth devices (toekomstbestendig)
-BT_DEVS=()
+# Bluetooth devices
 if command -v bluetoothctl >/dev/null 2>&1; then
     while read -r line; do
         [[ "$line" =~ ^Controller\ ([^[:space:]]+) ]] && BT_DEVS+=("${BASH_REMATCH[1]}")
@@ -580,20 +137,46 @@ export ZIGBEE_USB="${ZIGBEE_DEVS[0]:-/dev/null}"
 export ZWAVE_USB="${ZWAVE_DEVS[0]:-/dev/null}"
 
 # =====================================================
-# Directories
+# Homepage basis YAML
 # =====================================================
-mkdir -p "$STACK_DIR" "$BACKUP_DIR" "$IT_TOOLS_DIR"
-[ ${#ZIGBEE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/zigbee2mqtt"
-[ ${#ZWAVE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/zwavejs2mqtt"
-[ ${#BLE_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/ble2mqtt"
-[ ${#RF_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/rfxtrx"
-[ ${#IR_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/mqtt-ir"
-[ ${#P1_DEVS[@]} -gt 0 ] && mkdir -p "$STACK_DIR/p1monitor"
+IP=$(hostname -I | awk '{print $1}')
+cat > "$STACK_DIR/homepage/config/services.yaml" <<EOF
+- Infrastructuur:
+    - Home Assistant:
+        icon: home-assistant.png
+        href: http://$IP:8123
+        description: Smart Home Hub
+    - Portainer:
+        icon: portainer.png
+        href: http://$IP:8124
+        description: Docker Management
+    - Grafana:
+        icon: grafana.png
+        href: http://$IP:8128
+    - InfluxDB:
+        icon: influxdb.png
+        href: http://$IP:8127
+    - Dozzle:
+        icon: dozzle.png
+        href: http://$IP:8126
+
+- Monitoring & Tools:
+    - Beszel:
+        icon: beszel.png
+        href: http://$IP:8131
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: http://$IP:8132
+    - IT-Tools:
+        icon: it-tools.png
+        href: http://$IP:8135
+EOF
 
 # =====================================================
 # Docker Compose genereren
 # =====================================================
 cat > "$STACK_DIR/docker-compose.yml" <<EOF
+version: "3.9"
 services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -602,21 +185,16 @@ services:
     restart: unless-stopped
     ports: ["8123:8123"]
     volumes: ["./homeassistant:/config"]
-    environment:
-      - TZ=\${HA_TZ}
-    depends_on:
-      - mariadb
-      - mosquitto
 
   mariadb:
     image: mariadb:10.11
     container_name: mariadb
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: \${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: \${MYSQL_DATABASE}
-      MYSQL_USER: \${MYSQL_USER}
-      MYSQL_PASSWORD: \${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: homeassistant
+      MYSQL_USER: hauser
+      MYSQL_PASSWORD: hapass
     volumes:
       - ./mariadb:/var/lib/mysql
 
@@ -635,7 +213,7 @@ services:
     volumes: ["./zigbee2mqtt:/app/data"]
     devices:
       - \${ZIGBEE_USB}:/dev/ttyUSB0
-    environment: ["TZ=\${HA_TZ}"]
+    environment: ["TZ=Europe/Amsterdam"]
     depends_on: [mosquitto]
 
   zwavejs2mqtt:
@@ -646,7 +224,7 @@ services:
     volumes: ["./zwavejs2mqtt:/usr/src/app/store"]
     devices:
       - \${ZWAVE_USB}:/dev/ttyUSB0
-    environment: ["TZ=\${HA_TZ}"]
+    environment: ["TZ=Europe/Amsterdam"]
 
   esphome:
     image: ghcr.io/esphome/esphome
@@ -692,16 +270,21 @@ services:
     ports: ["8128:3000"]
     volumes: ["./grafana:/var/lib/grafana"]
 
-  netdata:
-    image: netdata/netdata
-    container_name: netdata
+  beszel:
+    image: 'henrygd/beszel:latest'
+    container_name: beszel
     restart: unless-stopped
-    ports: ["8131:19999"]
-    cap_add: [SYS_PTRACE]
-    security_opt: [apparmor:unconfined]
+    ports:
+      - '8131:8090'
     volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
+      - ./beszel_data:/data
+
+  beszel-agent:
+    image: 'henrygd/beszel-agent:latest'
+    container_name: beszel-agent
+    restart: unless-stopped
+    network_mode: host
+    volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   uptime-kuma:
@@ -711,21 +294,15 @@ services:
     ports: ["8132:3001"]
     volumes: ["./uptime-kuma:/app/data"]
 
-  homer:
-    image: b4bz/homer
-    container_name: homer
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
     restart: unless-stopped
-    ports: ["8133:8080"]
-    volumes: ["./homer:/www/assets"]
-    environment: ["INIT_ASSETS=1"]
-
-  crowdsec:
-    image: crowdsecurity/crowdsec
-    container_name: crowdsec
-    restart: unless-stopped
-    ports: ["8134:8080"]
+    ports:
+      - "8133:3000"
     volumes:
-    - ./crowdsec:/etc/crowdsec
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   it-tools:
     image: corentinth/it-tools:latest
@@ -741,102 +318,21 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=\${HA_TZ}
-      - SUBDOMAINS=\${DUCKDNS_SUB}
-      - TOKEN=\${DUCKDNS_TOKEN}
+      - TZ=Europe/Amsterdam
 volumes:
   portainer_data:
 EOF
-
-echo "✅ docker-compose.yml aangemaakt"
 
 # =====================================================
 # Start containers
 # =====================================================
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
-# =====================================================
-# WireGuard installatie en QR
-# =====================================================
+echo -e "\n✅ Docker containers gestart."
 
 # =====================================================
-# WireGuard installatie, IP forwarding en QR
+# Beszel key instructie
 # =====================================================
-apt install -y wireguard
-umask 077
-mkdir -p $WG_CONF_DIR
-
-# IP forwarding inschakelen
-echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-wireguard.conf
-sysctl -p /etc/sysctl.d/99-wireguard.conf
-
-# Server en client keys genereren
-wg genkey | tee $WG_CONF_DIR/server_private.key | wg pubkey > $WG_CONF_DIR/server_public.key
-SERVER_PRIV=$(cat $WG_CONF_DIR/server_private.key)
-SERVER_PUB=$(cat $WG_CONF_DIR/server_public.key)
-wg genkey | tee $WG_CONF_DIR/client_private.key | wg pubkey > $WG_CONF_DIR/client_public.key
-CLIENT_PRIV=$(cat $WG_CONF_DIR/client_private.key)
-CLIENT_PUB=$(cat $WG_CONF_DIR/client_public.key)
-
-# Server configuratie
-cat > $WG_CONF_DIR/$WG_INTERFACE.conf <<EOF
-[Interface]
-Address = 10.10.0.1/24
-ListenPort = $WG_PORT
-PrivateKey = $SERVER_PRIV
-PostUp = ufw route allow in on $WG_INTERFACE out on $INTERFACE; iptables -t nat -A POSTROUTING -o $INTERFACE -j MASQUERADE
-PostDown = ufw route delete allow in on $WG_INTERFACE out on $INTERFACE; iptables -t nat -D POSTROUTING -o $INTERFACE -j MASQUERADE
-
-[Peer]
-PublicKey = $CLIENT_PUB
-AllowedIPs = 10.10.0.2/32
-EOF
-
-# Client configuratie met werkende publieke DNS
-cat > $WG_CLIENT_CONF <<EOF
-[Interface]
-PrivateKey = $CLIENT_PRIV
-Address = 10.10.0.2/24
-DNS = 1.1.1.1, 9.9.9.9
-
-[Peer]
-PublicKey = $SERVER_PUB
-Endpoint = \${DUCKDNS_SUB}.duckdns.org:$WG_PORT
-AllowedIPs = 0.0.0.0/0, ::/0
-PersistentKeepalive = 25
-EOF
-
-# WireGuard service starten
-systemctl enable wg-quick@$WG_INTERFACE
-systemctl start wg-quick@$WG_INTERFACE
-
-# QR-code voor clientconfig
-qrencode -t ansiutf8 < "$WG_CLIENT_CONF"
-
-echo "✅ WireGuard opgezet met IP forwarding en werkende DNS in client-config"
-# =====================================================
-# Post-install checks
-# =====================================================
-IP=$(hostname -I | awk '{print $1}')
-echo "===================================================="
-echo "INSTALLATIE VOLTOOID 🎉"
-
-echo "🔎 Container status check:"
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-echo "Home Assistant:  http://${IP}:8123"
-echo "IT-Tools:        http://${IP}:8135"
-echo "CrowdSec:        http://${IP}:8134"
-echo "WireGuard client config: $WG_CLIENT_CONF"
-echo "QR-code hierboven weergegeven"
-echo "Backup directory:        $BACKUP_DIR"
-echo "Zigbee devices:          ${#ZIGBEE_DEVS[@]}"
-echo "Z-Wave devices:          ${#ZWAVE_DEVS[@]}"
-echo "BLE devices:             ${#BLE_DEVS[@]}"
-echo "Bluetooth adapters:      ${#BT_DEVS[@]}"
-echo "RF devices:              ${#RF_DEVS[@]}"
-echo "IR devices:              ${#IR_DEVS[@]}"
-echo "Smart Meter (P1) devices:${#P1_DEVS[@]}"
-echo "===================================================="
-echo "✅ Alle containers gestart en services beschikbaar"
-echo "Logbestand: $LOG_FILE"
+echo -e "\n⚠️ LET OP:"
+echo "Ga naar de Beszel Hub (poort 8131), kopieer je Public Key, en plak deze in de beszel-agent configuratie indien nodig."
+echo "Draai daarna opnieuw: docker compose up -d"
