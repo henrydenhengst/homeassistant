@@ -164,5 +164,5 @@ sudo systemctl start ble_gateway
 echo "==> Setup complete!"
 echo "BLE gateway en Node-RED draaien nu op deze Pi 3."
 echo "Pi heeft statisch IP: $STATIC_IP"
-echo "Node-RED: http://$STATIC_IP:1880"
+echo "Node-RED: http://$STATIC_IP:2136"
 echo "Configureer Home Assistant op je mini-pc om MQTT-berichten van deze Pi te ontvangen."
