@@ -12,6 +12,9 @@
 # Logbestand locatie
 LOG_FILE="$HOME/raspi_ble_setup.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
 
 echo "===================================================="
 echo "START INSTALLATIE $(date)"
