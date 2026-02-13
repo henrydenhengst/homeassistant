@@ -587,6 +587,47 @@ echo "Controleer eventuele foutmeldingen hierboven en start ontbrekende containe
 echo "docker compose -f $DOCKER_COMPOSE_FILE up -d [containernaam]"
 echo "===================================================="
 
+echo -e "\n===================================================="
+echo "📋 Samenvatting Webservices Status"
+echo "===================================================="
+
+declare -A SERVICES=(
+    ["Home Assistant"]="8123"
+    ["Mosquitto"]="8120"
+    ["Zigbee2MQTT"]="8121"
+    ["Z-Wave JS"]="8129"
+    ["ESPHome"]="8122"
+    ["Portainer"]="8124"
+    ["Watchtower"]="--"
+    ["Dozzle"]="8126"
+    ["InfluxDB"]="8127"
+    ["Grafana"]="8128"
+    ["Homepage"]="8133"
+    ["Uptime Kuma"]="8132"
+    ["IT-Tools"]="8135"
+    ["CrowdSec"]="8134"
+    ["DuckDNS"]="--"
+)
+
+for name in "${!SERVICES[@]}"; do
+    port=${SERVICES[$name]}
+    if [[ "$port" != "--" ]]; then
+        if nc -zv "$HA_IP" "$port" > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ $name actief op poort $port${NC}"
+        else
+            echo -e "${RED}❌ $name NIET bereikbaar op poort $port${NC}"
+        fi
+    else
+        # Controleer enkel container draait
+        if docker compose -f "$DOCKER_COMPOSE_FILE" ps -q "$name" | grep -q .; then
+            echo -e "${GREEN}✅ $name container draait${NC}"
+        else
+            echo -e "${RED}❌ $name container NIET actief${NC}"
+        fi
+    fi
+done
+echo -e "====================================================\n"
+
 # =====================================================
 # Post-install instructies voor Beszel
 # =====================================================
