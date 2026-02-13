@@ -90,6 +90,58 @@ Alle Docker-installaties gebruiken de **officiële Docker repositories** voor De
 - Backup van configuratiebestanden en kritieke data voor alle containers.
 - Restore instructies beschikbaar in documentatie.
 
+## Opmerkingen
+- Minimum systeemvereisten: 15 GB vrije schijfruimte, 4 GB RAM.
+- Hardware zoals Zigbee, Z-Wave of BLE wordt automatisch gedetecteerd.
+- Alle logs en foutmeldingen worden weggeschreven naar `$HOME/ha-install.log`.
+
+## Additional services:
+- **Portainer** → Docker container management  
+- **Dozzle** → Real-time container logs  
+- **IT-Tools** → Diagnostics & utilities  
+- **DuckDNS** → External access / dynamic DNS
+
+
+## Aanbevolen Aanvullende GitHub Repositories
+
+Om je homelab-stack nog krachtiger en vollediger te maken, zijn hier enkele nuttige repositories:
+
+- [Zigbee2MQTT](https://github.com/Koenkk/zigbee2mqtt) – Voor Zigbee integratie en device management.
+- [Z-Wave JS](https://github.com/zwave-js/zwavejs2mqtt) – Z-Wave controller en MQTT bridge.
+- [ESPHome](https://github.com/esphome/esphome) – Voor het programmeren en beheren van ESP32/ESP8266 devices.
+- [Home Assistant Community Add-ons](https://github.com/home-assistant/addons) – Officiële en community add-ons.
+- [Uptime-Kuma](https://github.com/louislam/uptime-kuma) – Self-hosted monitoring van uptime en alerts.
+- [Portainer CE](https://github.com/portainer/portainer) – Webinterface voor Docker beheer.
+- [Beszel](https://github.com/henrygd/beszel) – Lightweight real-time monitoring dashboard.
+- [Homepage](https://github.com/gethomepage/homepage) – Startpagina/dashboard voor al je web-apps.
+- [IT-Tools](https://github.com/corentinth/it-tools) – Diagnostics & monitoring tools voor servers en netwerk.
+
+> Tip: deze repos zijn optioneel, maar kunnen je homelab stack aanzienlijk uitbreiden en makkelijker beheren.
+
+
+## Aanbevolen Home Assistant GitHub Repositories
+
+Deze repositories zijn handig voor uitbreidingen, add-ons en integraties binnen je Home Assistant homelab:
+
+- [Home Assistant Core](https://github.com/home-assistant/core) – De officiële Home Assistant core.
+- [Home Assistant OS](https://github.com/home-assistant/operating-system) – Full OS images voor Home Assistant.
+- [Home Assistant Supervisor](https://github.com/home-assistant/supervisor) – Beheer van add-ons en system services.
+- [Home Assistant Add-ons](https://github.com/home-assistant/addons) – Officiële add-ons zoals MariaDB, Mosquitto, InfluxDB.
+- [Zigbee2MQTT](https://github.com/Koenkk/zigbee2mqtt) – Zigbee integratie via MQTT.
+- [Z-Wave JS](https://github.com/zwave-js/zwavejs2mqtt) – Z-Wave integratie via MQTT.
+- [ESPHome](https://github.com/esphome/esphome) – ESP32/ESP8266 automatisering en sensoren.
+- [HACS (Home Assistant Community Store)](https://github.com/hacs/integration) – Community add-ons en custom components.
+- [Home Assistant Frontend](https://github.com/home-assistant/frontend) – Het web-dashboard en interface.
+- [Home Assistant Supervisor Add-ons](https://github.com/home-assistant/addons) – Extra add-ons maintained door de community.
+
+### Best Practices & Conventies
+- 🧩 **Home Assistant Naming Convention** — https://github.com/Trikos/Home-Assistant-Naming-Convention  
+  Aanbevolen richtlijnen voor consistente naamgeving van entities, automations en dashboards — onmisbaar bij grotere setups.
+
+> Tip: deze repositories zijn perfect voor wie zijn Home Assistant setup wil uitbreiden met integraties, add-ons en custom components.
+
+
+
 ---
 
 ## Installatie Flow (Functioneel)
@@ -147,53 +199,7 @@ Alle Docker-installaties gebruiken de **officiële Docker repositories** voor De
  │ Alerts       │
  └──────────────┘
 
-Additional services:
-- **Portainer** → Docker container management  
-- **Dozzle** → Real-time container logs  
-- **IT-Tools** → Diagnostics & utilities  
-- **DuckDNS** → External access / dynamic DNS
+
 
 ---
 
-## Opmerkingen
-- Minimum systeemvereisten: 15 GB vrije schijfruimte, 4 GB RAM.
-- Hardware zoals Zigbee, Z-Wave of BLE wordt automatisch gedetecteerd.
-- Alle logs en foutmeldingen worden weggeschreven naar `$HOME/ha-install.log`.
-
-## Aanbevolen Aanvullende GitHub Repositories
-
-Om je homelab-stack nog krachtiger en vollediger te maken, zijn hier enkele nuttige repositories:
-
-- [Zigbee2MQTT](https://github.com/Koenkk/zigbee2mqtt) – Voor Zigbee integratie en device management.
-- [Z-Wave JS](https://github.com/zwave-js/zwavejs2mqtt) – Z-Wave controller en MQTT bridge.
-- [ESPHome](https://github.com/esphome/esphome) – Voor het programmeren en beheren van ESP32/ESP8266 devices.
-- [Home Assistant Community Add-ons](https://github.com/home-assistant/addons) – Officiële en community add-ons.
-- [Uptime-Kuma](https://github.com/louislam/uptime-kuma) – Self-hosted monitoring van uptime en alerts.
-- [Portainer CE](https://github.com/portainer/portainer) – Webinterface voor Docker beheer.
-- [Beszel](https://github.com/henrygd/beszel) – Lightweight real-time monitoring dashboard.
-- [Homepage](https://github.com/gethomepage/homepage) – Startpagina/dashboard voor al je web-apps.
-- [IT-Tools](https://github.com/corentinth/it-tools) – Diagnostics & monitoring tools voor servers en netwerk.
-
-> Tip: deze repos zijn optioneel, maar kunnen je homelab stack aanzienlijk uitbreiden en makkelijker beheren.
-
-
-## Aanbevolen Home Assistant GitHub Repositories
-
-Deze repositories zijn handig voor uitbreidingen, add-ons en integraties binnen je Home Assistant homelab:
-
-- [Home Assistant Core](https://github.com/home-assistant/core) – De officiële Home Assistant core.
-- [Home Assistant OS](https://github.com/home-assistant/operating-system) – Full OS images voor Home Assistant.
-- [Home Assistant Supervisor](https://github.com/home-assistant/supervisor) – Beheer van add-ons en system services.
-- [Home Assistant Add-ons](https://github.com/home-assistant/addons) – Officiële add-ons zoals MariaDB, Mosquitto, InfluxDB.
-- [Zigbee2MQTT](https://github.com/Koenkk/zigbee2mqtt) – Zigbee integratie via MQTT.
-- [Z-Wave JS](https://github.com/zwave-js/zwavejs2mqtt) – Z-Wave integratie via MQTT.
-- [ESPHome](https://github.com/esphome/esphome) – ESP32/ESP8266 automatisering en sensoren.
-- [HACS (Home Assistant Community Store)](https://github.com/hacs/integration) – Community add-ons en custom components.
-- [Home Assistant Frontend](https://github.com/home-assistant/frontend) – Het web-dashboard en interface.
-- [Home Assistant Supervisor Add-ons](https://github.com/home-assistant/addons) – Extra add-ons maintained door de community.
-
-### Best Practices & Conventies
-- 🧩 **Home Assistant Naming Convention** — https://github.com/Trikos/Home-Assistant-Naming-Convention  
-  Aanbevolen richtlijnen voor consistente naamgeving van entities, automations en dashboards — onmisbaar bij grotere setups.
-
-> Tip: deze repositories zijn perfect voor wie zijn Home Assistant setup wil uitbreiden met integraties, add-ons en custom components.
