@@ -1,5 +1,30 @@
 # 🏠 Homelab Dashboard & Automation Stack
 
+## Inhoudsopgave
+- [Overzicht](#overzicht)
+- [Functies](#functies)
+  - [Home Assistant](#home-assistant)
+  - [Beszel](#beszel)
+  - [Homepage](#homepage)
+  - [Uptime-Kuma](#uptime-kuma)
+  - [Grafana & InfluxDB](#grafana--influxdb)
+  - [Portainer](#portainer)
+  - [Dozzle](#dozzle)
+  - [IT-Tools](#it-tools)
+  - [Mosquitto (MQTT)](#mosquitto-mqtt)
+  - [MariaDB](#mariadb)
+  - [DuckDNS](#duckdns)
+- [Hardware Detectie](#hardware-detectie)
+- [Netwerk Hardening](#netwerk-hardening)
+- [Backup & Data Management](#backup--data-management)
+- [Opmerkingen](#opmerkingen)
+- [Additional services](#additional-services)
+- [Aanbevolen Aanvullende GitHub Repositories](#aanbevolen-aanvullende-github-repositories)
+- [Aanbevolen Home Assistant GitHub Repositories](#aanbevolen-home-assistant-github-repositories)
+- [Services & Poorten Overzicht](#services--poorten-overzicht)
+- [Installatie Flow (Functioneel)](#installatie-flow-functioneel)
+
+
 ## Overzicht
 Deze homelab-stack biedt een complete plug-and-play omgeving voor smart home automatisering, monitoring en serverbeheer. Het draait op **Debian 13 Minimal** en gebruikt Docker containers voor maximale isolatie, stabiliteit en eenvoud.  
 
