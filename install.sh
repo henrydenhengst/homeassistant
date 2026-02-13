@@ -76,6 +76,154 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+
+
+#!/bin/bash
+set -e
+set -o pipefail
+
+LOG_FILE="$HOME/hardware-check.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "===================================================="
+echo "START HARDWARE CHECK $(date)"
+echo "Logbestand: $LOG_FILE"
+echo "===================================================="
+
+# -------------------------------
+# Basis systeemchecks
+# -------------------------------
+MIN_DISK_GB=15
+MIN_RAM_MB=4000
+
+FREE_DISK_GB=$(df / | tail -1 | awk '{print int($4/1024/1024)}')
+TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
+
+if [[ $FREE_DISK_GB -lt $MIN_DISK_GB || $TOTAL_RAM_MB -lt $MIN_RAM_MB ]]; then
+    echo "❌ Onvoldoende systeembronnen: Schijf=${FREE_DISK_GB}GB, RAM=${TOTAL_RAM_MB}MB"
+    exit 1
+fi
+
+if [[ $EUID -ne 0 ]]; then
+   echo "❌ Run als root."
+   exit 1
+fi
+
+# -------------------------------
+# Schijf Gezondheid (SMART)
+# -------------------------------
+apt update && apt install -y smartmontools lm-sensors stress-ng lsblk usbutils jq curl
+
+DISKS=$(lsblk -dno NAME,MODEL,SIZE | grep -vE "loop|boot|rpmb|sr")
+
+PROBLEMS_FOUND=0
+PROBLEM_DISKS=()
+
+for disk_info in $DISKS; do
+    read -r NAME MODEL SIZE <<< "$disk_info"
+    DEV="/dev/$NAME"
+    echo -e "\n💾 Schijf: $DEV [$MODEL - $SIZE]"
+    echo "----------------------------------------------------"
+
+    STATUS=$(smartctl -H "$DEV" 2>/dev/null | awk -F': ' '/overall-health/ {gsub(/ /,"",$2); print $2}')
+    [[ -z "$STATUS" ]] && STATUS="UNKNOWN"
+
+    if [[ "$STATUS" != "PASSED" && "$STATUS" != "OK" && "$STATUS" != "UNKNOWN" ]]; then
+        echo -e "❌ KRITIEKE FOUT: $DEV status = $STATUS"
+        PROBLEMS_FOUND=$((PROBLEMS_FOUND + 1))
+        PROBLEM_DISKS+=("$DEV - $STATUS")
+    fi
+
+    ATTRS=$(smartctl -A "$DEV" 2>/dev/null)
+    REALLOC=$(echo "$ATTRS" | awk '/Reallocated_Sector_Ct/ {print $10}')
+    PENDING=$(echo "$ATTRS" | awk '/Current_Pending_Sector/ {print $10}')
+
+    if [[ "$REALLOC" -gt 0 || "$PENDING" -gt 0 ]]; then
+        echo -e "❌ Fysieke fouten gedetecteerd op $DEV (Realloc:$REALLOC Pending:$PENDING)"
+        PROBLEMS_FOUND=$((PROBLEMS_FOUND + 1))
+        PROBLEM_DISKS+=("$DEV - fysieke schade (Realloc:$REALLOC Pending:$PENDING)")
+    fi
+
+    if [[ "$NAME" == nvme* ]]; then
+        TEMP=$(echo "$ATTRS" | awk '/Temperature/ {print $2 " " $3}')
+        WEAR=$(echo "$ATTRS" | awk -F': ' '/Percentage Used/ {print $2}')
+        echo "🌡️  Temperatuur: $TEMP"
+        echo "📉 Slijtage (Used): ${WEAR:-0}%"
+    else
+        HOURS=$(echo "$ATTRS" | awk '/Power_On_Hours/ {print $10}')
+        echo "🕒 Branduren: ${HOURS:-0} uur"
+    fi
+done
+
+echo -e "\n===================================================="
+if [[ $PROBLEMS_FOUND -eq 0 ]]; then
+    echo "✅ Alle schijven lijken gezond."
+else
+    echo "⚠️  Problemen gedetecteerd op $PROBLEMS_FOUND schijf(en):"
+    for disk in "${PROBLEM_DISKS[@]}"; do
+        echo " - $disk"
+    done
+fi
+echo "===================================================="
+
+# -------------------------------
+# Geheugen (RAM) check
+# -------------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+MEM_ERRORS=$(dmesg --ctime | grep -iE "memory error|ECC error|Corrected error|Uncorrected error" || true)
+if [[ -n "$MEM_ERRORS" ]]; then
+    echo -e "${RED}❌ Geheugenfouten gedetecteerd!${NC}"
+    echo "$MEM_ERRORS" | tail -n 5
+    exit 1
+else
+    echo -e "${GREEN}✅ Geen geheugenfouten gevonden in systeemlogs.${NC}"
+fi
+
+read -p "Wil je een actieve RAM-test uitvoeren met memtester? [y/N]: " do_memtest
+if [[ "$do_memtest" =~ ^[Yy]$ ]]; then
+    apt install -y memtester
+    TEST_MB=$(( TOTAL_RAM_MB / 4 ))
+    (( TEST_MB > 8192 )) && TEST_MB=8192
+    memtester "${TEST_MB}M" 1
+fi
+
+# -------------------------------
+# CPU Temperatuur & Stabiliteit
+# -------------------------------
+if command -v sensors &> /dev/null; then
+    TEMP=$(sensors | grep "Package id 0:" | awk '{print $4}' | tr -d '+°C' | cut -d. -f1)
+    if [[ -n "$TEMP" && "$TEMP" -gt 80 ]]; then
+        echo "⚠️  CPU is te heet ($TEMP°C)"
+    else
+        echo "✅ CPU temperatuur OK: $TEMP°C"
+    fi
+fi
+
+if command -v stress-ng &> /dev/null; then
+    echo "⚡ Korte CPU stress-test (15s)..."
+    stress-ng --cpu $(nproc) -t 15s --quiet || { echo "❌ CPU onstabiel"; exit 1; }
+    echo "✅ CPU stabiel onder korte stress-test"
+fi
+
+# -------------------------------
+# Voeding / Undervoltage check (Raspberry Pi)
+# -------------------------------
+if command -v vcgencmd &> /dev/null; then
+    UNDERVOLT=$(vcgencmd get_throttled | grep -v "0x0" || true)
+    if [[ -n "$UNDERVOLT" ]]; then
+        echo "❌ Undervoltage gedetecteerd! Controleer voeding"
+    else
+        echo "✅ Voeding stabiel"
+    fi
+fi
+
+echo "===================================================="
+echo "✅ Hardware check voltooid"
+
+
 # =====================================================
 # Basis tools
 # =====================================================
