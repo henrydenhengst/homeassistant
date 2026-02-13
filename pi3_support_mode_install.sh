@@ -14,7 +14,17 @@ IFS=$'\n\t'
 STATIC_IP="192.168.178.3"
 ROUTER_IP="192.168.178.1"
 DNS_SERVERS="9.9.9.9 1.1.1.1 8.8.8.8"
-INTERFACE="eth0"  # Pas aan naar wlan0 indien nodig
+INTERFACE="wlan0"  # Pas aan naar eth0 indien nodig
+
+sudo tee -a /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null <<EOL
+
+network={
+    ssid="JOUW_SSID"
+    psk="JOUW_WACHTWOORD"
+    key_mgmt=WPA-PSK
+}
+EOL
+sudo wpa_cli -i wlan0 reconfigure
 
 # MQTT broker IP en topic
 MQTT_BROKER="192.168.178.2"  # Mini-pc Home Assistant
