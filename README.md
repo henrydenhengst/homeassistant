@@ -5,6 +5,8 @@ Deze homelab-stack biedt een complete plug-and-play omgeving voor smart home aut
 
 Alle Docker-installaties gebruiken de **officiële Docker repositories** voor Debian 13, zodat je altijd de nieuwste stabiele versie krijgt.
 
+> **Technische installatie:** Alle installatie- en configuratiestappen zijn geautomatiseerd in [`install.sh`](./install.sh).
+
 ---
 
 ## Functies
