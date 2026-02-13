@@ -5,8 +5,18 @@
 # + Statisch IP
 # ========================================================
 
-set -euo pipefail
-IFS=$'\n\t'
+# =========================================================
+# Raspberry Pi 3 Edge Device Setup - Logging enabled
+# =========================================================
+
+# Logbestand locatie
+LOG_FILE="$HOME/raspi_ble_setup.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "===================================================="
+echo "START INSTALLATIE $(date)"
+echo "Logbestand: $LOG_FILE"
+echo "===================================================="
 
 # ----------------------------
 # 0. Variabelen netwerk
