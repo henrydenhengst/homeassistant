@@ -440,6 +440,20 @@ services:
     ports: ["8122:6052"]
     volumes: ["./esphome:/config"]
 
+
+  nodered:
+    image: nodered/node-red:latest
+    container_name: nodered
+    restart: unless-stopped
+    ports:
+      - "2136:1880"       # Externe poort 2136 naar interne Node-RED poort 1880
+    volumes:
+      - ./nodered_data:/data
+    environment:
+      - TZ=Europe/Amsterdam
+    depends_on:
+      - mosquitto          # Voor MQTT integratie met Home Assistant
+
   portainer:
     image: portainer/portainer-ce
     container_name: portainer
@@ -661,6 +675,12 @@ for name in "${!SERVICES[@]}"; do
     fi
 done
 echo -e "====================================================\n"
+
+if nc -zv $HA_IP 2136 > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Node-RED actief op poort 2136${NC}"
+else
+    echo -e "${RED}❌ Node-RED NIET bereikbaar op poort 2136${NC}"
+fi
 
 # =====================================================
 # Post-install instructies voor Beszel
