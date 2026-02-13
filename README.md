@@ -164,7 +164,7 @@ Deze repositories zijn handig voor uitbreidingen, add-ons en integraties binnen 
 - [Home Assistant Naming Convention](https://github.com/Trikos/Home-Assistant-Naming-Convention) - Aanbevolen richtlijnen voor consistente naamgeving van entities, automations en dashboards, onmisbaar bij grotere setups.
 
 
-# Populaire Full Dashboard Projects voor Home Assistant
+## Populaire Full Dashboard Projects voor Home Assistant
 
 Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt bekijken en gebruiken:
 
