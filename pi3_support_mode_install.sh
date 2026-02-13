@@ -1,298 +1,219 @@
 #!/bin/bash
-# ========================================================
-# Raspberry Pi 3 Edge Device Setup
-# BLE Gateway + Node-RED + Optional IR/RF
-# + Statisch IP
-# ========================================================
 
-# =========================================================
-# Raspberry Pi 3 Edge Device Setup - Logging enabled
-# =========================================================
+################################
+# PI SUPPORT INSTALL SCRIPT
+################################
 
-# Logbestand locatie
-LOG_FILE="$HOME/raspi_ble_setup.log"
-exec > >(tee -a "$LOG_FILE") 2>&1
+LOGFILE="/var/log/pi-install.log"
+
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+    echo "$(date) | $1" | tee -a $LOGFILE
 }
 
-echo "===================================================="
-echo "START INSTALLATIE $(date)"
-echo "Logbestand: $LOG_FILE"
-echo "===================================================="
+log "==== PI INSTALL START ===="
 
-# ----------------------------
-# 0. Variabelen netwerk
-# ----------------------------
-STATIC_IP="192.168.178.3"
-ROUTER_IP="192.168.178.1"
-DNS_SERVERS="9.9.9.9 1.1.1.1 8.8.8.8"
-INTERFACE="wlan0"  # Pas aan naar eth0 indien nodig
+################################
+# UPDATE SYSTEM
+################################
 
-sudo tee -a /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null <<EOL
+log "Updating system..."
+apt update && apt upgrade -y
 
-network={
-    ssid="JOUW_SSID"
-    psk="JOUW_WACHTWOORD"
-    key_mgmt=WPA-PSK
-}
-EOL
-sudo wpa_cli -i wlan0 reconfigure
+################################
+# INSTALL BASE PACKAGES
+################################
 
-# MQTT broker IP en topic
-MQTT_BROKER="192.168.178.2"  # Mini-pc Home Assistant
-MQTT_TOPIC="ble_gateway/pi3"
+log "Installing base packages..."
+apt install -y \
+docker.io \
+docker-compose \
+ufw \
+netcat-openbsd \
+curl \
+wget \
+logrotate
 
-# Directories
-BLE_DIR="$HOME/ble_gateway"
-BLE_SCRIPT="$BLE_DIR/ble_gateway.py"
+systemctl enable docker
+systemctl start docker
 
-echo "==> Starting setup for Raspberry Pi 3 edge device..."
+################################
+# FIREWALL SETUP
+################################
 
-# ----------------------------
-# 1. Controle netwerkinterface
-# ----------------------------
-if ! ip link show "$INTERFACE" > /dev/null 2>&1; then
-    echo "ERROR: Interface $INTERFACE bestaat niet. Controleer met 'ip link'."
-    exit 1
+log "Configuring firewall..."
+
+ufw allow ssh
+ufw allow 2136/tcp
+
+ufw --force enable
+
+################################
+# AUTO UPDATES
+################################
+
+log "Installing unattended upgrades..."
+
+apt install -y unattended-upgrades
+dpkg-reconfigure -f noninteractive unattended-upgrades
+
+################################
+# HARDWARE WATCHDOG
+################################
+
+log "Installing hardware watchdog..."
+
+apt install -y watchdog
+
+sed -i 's/#watchdog-device/watchdog-device/' /etc/watchdog.conf || true
+
+systemctl enable watchdog
+systemctl start watchdog
+
+################################
+# CREATE SUPER WATCHDOG SCRIPT
+################################
+
+log "Installing super watchdog..."
+
+cat << 'EOF' > /usr/local/bin/pi-super-watchdog.sh
+#!/bin/bash
+
+PORT=2136
+MAX_FAILS=3
+MAX_RAM_PERCENT=95
+
+STATE_FILE="/tmp/pi-watchdog-fails"
+LOG_FILE="/var/log/pi-super-watchdog.log"
+
+fail_count=0
+
+if [ -f "$STATE_FILE" ]; then
+    fail_count=$(cat "$STATE_FILE")
 fi
 
-# ----------------------------
-# 2. Configure static IP
-# ----------------------------
-echo "==> Configuring static IP for $INTERFACE: $STATIC_IP"
-sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.backup
+log() {
+    echo "$(date) | $1" >> $LOG_FILE
+}
 
-# Verwijder eerdere statische IP config voor interface
-sudo sed -i "/interface $INTERFACE/,/static domain_name_servers/d" /etc/dhcpcd.conf
+################################
+# NODE-RED CHECK
+################################
 
-# Voeg nieuwe configuratie toe
-sudo tee -a /etc/dhcpcd.conf > /dev/null <<EOL
-
-# Static IP configuration added by setup script
-interface $INTERFACE
-static ip_address=$STATIC_IP/24
-static routers=$ROUTER_IP
-static domain_name_servers=$DNS_SERVERS
-EOL
-
-echo "==> Static IP configured. Restarting dhcpcd..."
-sudo systemctl restart dhcpcd
-sleep 5
-
-
-# ----------------------------
-# 5b. Configure UFW firewall
-# ----------------------------
-echo "==> Configuring UFW firewall..."
-sudo apt install -y ufw
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-
-# Open benodigde poorten
-sudo ufw allow 22/tcp         # SSH
-sudo ufw allow 2136/tcp       # Node-RED
-sudo ufw allow 1883/tcp       # MQTT
-
-sudo ufw --force enable
-sudo ufw status verbose
-echo "✅ Firewall configured."
-
-# ----------------------------
-# 3. Update system packages
-# ----------------------------
-echo "==> Updating system packages..."
-sudo apt update && sudo apt upgrade -y
-
-# ----------------------------
-# 4. Install dependencies
-# ----------------------------
-echo "==> Installing dependencies..."
-sudo apt install -y git curl wget python3-pip python3-venv mosquitto mosquitto-clients build-essential lirc
-
-# ----------------------------
-# 5. Enable Mosquitto MQTT broker
-# ----------------------------
-echo "==> Enabling Mosquitto MQTT broker..."
-sudo systemctl enable mosquitto
-sudo systemctl start mosquitto
-
-# ----------------------------
-# 6. Install Node-RED if not installed
-# ----------------------------
-if ! command -v node-red > /dev/null; then
-    echo "==> Installing Node-RED..."
-    bash <(curl -sL https://raw.githubusercontent.com/node-red/linux-installers/master/deb/update-nodejs-and-nodered)
-    sudo systemctl enable nodered.service
-    sudo systemctl start nodered.service
+if nc -z localhost $PORT; then
+    log "Node-RED OK"
+    echo 0 > $STATE_FILE
 else
-    echo "==> Node-RED already installed."
+    fail_count=$((fail_count+1))
+    log "Node-RED FAIL ($fail_count/$MAX_FAILS)"
+    echo $fail_count > $STATE_FILE
+
+    log "Restarting Node-RED container"
+    docker restart nodered || true
+    sleep 20
+
+    if nc -z localhost $PORT; then
+        log "Node-RED recovered"
+        echo 0 > $STATE_FILE
+    else
+        if [ $fail_count -ge $MAX_FAILS ]; then
+            log "Node-RED unrecoverable → REBOOT"
+            reboot
+        fi
+    fi
 fi
 
-# ----------------------------
-# 7. Install Python BLE tools
-# ----------------------------
-echo "==> Installing Python BLE tools..."
-sudo pip3 install --upgrade paho-mqtt bluepy
+################################
+# RAM CHECK
+################################
 
-# ----------------------------
-# 8. Create BLE gateway script
-# ----------------------------
-echo "==> Creating BLE gateway script..."
-mkdir -p "$BLE_DIR"
+RAM_USED=$(free | awk '/Mem:/ {printf("%.0f"), $3/$2 * 100.0}')
 
-cat > "$BLE_SCRIPT" <<EOF
-#!/usr/bin/env python3
-import paho.mqtt.client as mqtt
-from bluepy import btle
-import time
-import json
+if [ "$RAM_USED" -ge "$MAX_RAM_PERCENT" ]; then
+    log "RAM CRITICAL (${RAM_USED}%) → REBOOT"
+    reboot
+else
+    log "RAM OK (${RAM_USED}%)"
+fi
 
-MQTT_BROKER = "$MQTT_BROKER"
-MQTT_TOPIC = "$MQTT_TOPIC"
+################################
+# SD HEALTH CHECK
+################################
 
-def scan_ble():
-    scanner = btle.Scanner()
-    devices = scanner.scan(5.0)
-    return devices
+if mount | grep ' / ' | grep '(ro,' > /dev/null; then
+    log "SD READ ONLY → REBOOT"
+    reboot
+fi
 
-client = mqtt.Client()
-client.connect(MQTT_BROKER, 1883, 60)
-client.loop_start()
+if dmesg | tail -n 50 | grep -i "mmc\|i/o error\|ext4 error" > /dev/null; then
+    log "SD IO ERRORS → REBOOT"
+    reboot
+fi
 
-while True:
-    try:
-        devices = scan_ble()
-        for dev in devices:
-            msg = {"addr": dev.addr, "rssi": dev.rssi}
-            client.publish(MQTT_TOPIC, json.dumps(msg))
-    except Exception as e:
-        print(f"BLE scan error: {e}")
-    time.sleep(10)
+log "System OK"
 EOF
 
-chmod +x "$BLE_SCRIPT"
+chmod +x /usr/local/bin/pi-super-watchdog.sh
 
-# ----------------------------
-# 9. Create systemd service
-# ----------------------------
-echo "==> Creating systemd service for BLE gateway..."
-sudo tee /etc/systemd/system/ble_gateway.service > /dev/null <<EOL
+################################
+# SYSTEMD SERVICE
+################################
+
+log "Creating systemd watchdog service..."
+
+cat << 'EOF' > /etc/systemd/system/pi-super-watchdog.service
 [Unit]
-Description=BLE Gateway to MQTT
-After=network.target
+Description=Pi Super Watchdog
 
 [Service]
-ExecStart=$BLE_SCRIPT
-Restart=always
-RestartSec=5
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=ble_gateway
-User=$USER
+Type=oneshot
+ExecStart=/usr/local/bin/pi-super-watchdog.sh
+EOF
+
+################################
+# SYSTEMD TIMER
+################################
+
+log "Creating watchdog timer..."
+
+cat << 'EOF' > /etc/systemd/system/pi-super-watchdog.timer
+[Unit]
+Description=Run Pi Super Watchdog every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
 
 [Install]
-WantedBy=multi-user.target
-EOL
+WantedBy=timers.target
+EOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable ble_gateway
-sudo systemctl start ble_gateway
+systemctl daemon-reload
+systemctl enable pi-super-watchdog.timer
+systemctl start pi-super-watchdog.timer
 
-# ----------------------------
-# 11. Post-install health checks
-# ----------------------------
-log "==> Running post-install health checks..."
+################################
+# LOG ROTATION
+################################
 
-ERRORS=0
+log "Configuring log rotation..."
 
-check_service() {
-    if systemctl is-active --quiet "$1"; then
-        log "✅ Service $1 running"
-    else
-        log "❌ Service $1 NOT running"
-        ERRORS=$((ERRORS+1))
-    fi
+cat << 'EOF' > /etc/logrotate.d/pi-super-watchdog
+/var/log/pi-super-watchdog.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
 }
+EOF
 
-check_port() {
-    if ss -tuln | grep -q ":$1 "; then
-        log "✅ Port $1 open"
-    else
-        log "❌ Port $1 NOT open"
-        ERRORS=$((ERRORS+1))
-    fi
-}
+################################
+# FINAL CHECK
+################################
 
-# ---- Network check ----
-log "Checking network connectivity..."
-if ping -c 2 "$ROUTER_IP" > /dev/null; then
-    log "✅ Router reachable"
-else
-    log "❌ Router NOT reachable"
-    ERRORS=$((ERRORS+1))
-fi
+log "Final system check..."
 
-if ping -c 2 8.8.8.8 > /dev/null; then
-    log "✅ Internet reachable"
-else
-    log "❌ Internet NOT reachable"
-    ERRORS=$((ERRORS+1))
-fi
+systemctl status docker --no-pager
+systemctl status pi-super-watchdog.timer --no-pager
 
-# ---- Service checks ----
-check_service mosquitto
-check_service nodered
-check_service ble_gateway
-
-# ---- Port checks ----
-check_port 22
-check_port 1883
-check_port 2136
-
-# ---- MQTT test ----
-log "Testing MQTT publish..."
-if mosquitto_pub -h "$MQTT_BROKER" -t test/pi -m "hello" ; then
-    log "✅ MQTT publish OK"
-else
-    log "❌ MQTT publish FAILED"
-    ERRORS=$((ERRORS+1))
-fi
-
-# ---- BLE hardware check ----
-log "Checking BLE adapter..."
-if hciconfig | grep -q "hci0"; then
-    log "✅ BLE adapter detected"
-else
-    log "❌ BLE adapter NOT detected"
-    ERRORS=$((ERRORS+1))
-fi
-
-# ---- Node-RED HTTP check ----
-log "Checking Node-RED HTTP endpoint..."
-if curl -s --max-time 5 "http://localhost:2136" > /dev/null; then
-    log "✅ Node-RED responding"
-else
-    log "❌ Node-RED NOT responding"
-    ERRORS=$((ERRORS+1))
-fi
-
-# ---- Summary ----
-echo "--------------------------------------------------"
-if [ "$ERRORS" -eq 0 ]; then
-    log "🎉 ALL CHECKS PASSED"
-else
-    log "⚠️  $ERRORS CHECK(S) FAILED — Check log!"
-fi
-echo "--------------------------------------------------"
-
-# ----------------------------
-# 10. Setup complete
-# ----------------------------
-echo "==> Setup complete!"
-echo "BLE gateway en Node-RED draaien nu op deze Pi 3."
-echo "Pi heeft statisch IP: $STATIC_IP"
-echo "Node-RED: http://$STATIC_IP:2136"
-echo "Configureer Home Assistant op je mini-pc om MQTT-berichten van deze Pi te ontvangen."
-
-
+log "==== INSTALL COMPLETE ===="
