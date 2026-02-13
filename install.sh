@@ -232,8 +232,42 @@ apt update && apt install -y \
   ufw openssh-server usbutils bluetooth bluez fail2ban vim nano \
   ripgrep fd-find fzf tmux git htop ncdu jq qrencode auditd \
   unattended-upgrades duff rsync moreutils unzip mtr dnsutils \
-  tcpdump tshark lsof ipcalc lshw docker-ce docker-ce-cli \
-  containerd.io docker-compose-plugin smartmontools memtester
+  tcpdump tshark lsof ipcalc lshw smartmontools memtester
+
+
+# =====================================================
+# Officiële Docker installatie voor Debian 13
+# =====================================================
+echo "📦 Installatie van Docker via officiële Docker repository..."
+
+# Verwijder oudere versies (indien aanwezig)
+apt remove -y docker docker-engine docker.io containerd runc || true
+
+# Vereiste pakketten
+apt update
+apt install -y \
+    ca-certificates curl gnupg lsb-release software-properties-common
+
+# Voeg Docker GPG key toe
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Voeg Docker repository toe
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/debian \
+  bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Update pakketlijst en installeer Docker Engine
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Docker service activeren
+systemctl enable docker
+systemctl restart docker
+
+# Controleer Docker versie
+docker --version
 
 # =====================================================
 # Directories
