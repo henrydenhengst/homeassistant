@@ -13,7 +13,7 @@ set -e
 # Pas deze waarden aan voor je netwerk
 STATIC_IP="192.168.178.3"
 ROUTER_IP="192.168.178.1"
-DNS_SERVERS="9.9.9.9 1.1.1.1 8.8.8.8"
+DNS_SERVERS=9.9.9.9 1.1.1.1 8.8.8.8
 INTERFACE="eth0"  # kies eth0 of wlan0
 
 echo "==> Configuring static IP for $INTERFACE: $STATIC_IP"
@@ -81,7 +81,7 @@ from bluepy import btle
 import time
 import json
 
-MQTT_BROKER = "192.168.1.100"  # IP van mini-pc HA MQTT broker
+MQTT_BROKER = "192.168.178.2"  # IP van mini-pc HA MQTT broker
 MQTT_TOPIC = "ble_gateway"
 
 def scan_ble():
