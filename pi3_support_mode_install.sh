@@ -197,6 +197,93 @@ sudo systemctl enable ble_gateway
 sudo systemctl start ble_gateway
 
 # ----------------------------
+# 11. Post-install health checks
+# ----------------------------
+log "==> Running post-install health checks..."
+
+ERRORS=0
+
+check_service() {
+    if systemctl is-active --quiet "$1"; then
+        log "✅ Service $1 running"
+    else
+        log "❌ Service $1 NOT running"
+        ERRORS=$((ERRORS+1))
+    fi
+}
+
+check_port() {
+    if ss -tuln | grep -q ":$1 "; then
+        log "✅ Port $1 open"
+    else
+        log "❌ Port $1 NOT open"
+        ERRORS=$((ERRORS+1))
+    fi
+}
+
+# ---- Network check ----
+log "Checking network connectivity..."
+if ping -c 2 "$ROUTER_IP" > /dev/null; then
+    log "✅ Router reachable"
+else
+    log "❌ Router NOT reachable"
+    ERRORS=$((ERRORS+1))
+fi
+
+if ping -c 2 8.8.8.8 > /dev/null; then
+    log "✅ Internet reachable"
+else
+    log "❌ Internet NOT reachable"
+    ERRORS=$((ERRORS+1))
+fi
+
+# ---- Service checks ----
+check_service mosquitto
+check_service nodered
+check_service ble_gateway
+
+# ---- Port checks ----
+check_port 22
+check_port 1883
+check_port 2136
+
+# ---- MQTT test ----
+log "Testing MQTT publish..."
+if mosquitto_pub -h "$MQTT_BROKER" -t test/pi -m "hello" ; then
+    log "✅ MQTT publish OK"
+else
+    log "❌ MQTT publish FAILED"
+    ERRORS=$((ERRORS+1))
+fi
+
+# ---- BLE hardware check ----
+log "Checking BLE adapter..."
+if hciconfig | grep -q "hci0"; then
+    log "✅ BLE adapter detected"
+else
+    log "❌ BLE adapter NOT detected"
+    ERRORS=$((ERRORS+1))
+fi
+
+# ---- Node-RED HTTP check ----
+log "Checking Node-RED HTTP endpoint..."
+if curl -s --max-time 5 "http://localhost:2136" > /dev/null; then
+    log "✅ Node-RED responding"
+else
+    log "❌ Node-RED NOT responding"
+    ERRORS=$((ERRORS+1))
+fi
+
+# ---- Summary ----
+echo "--------------------------------------------------"
+if [ "$ERRORS" -eq 0 ]; then
+    log "🎉 ALL CHECKS PASSED"
+else
+    log "⚠️  $ERRORS CHECK(S) FAILED — Check log!"
+fi
+echo "--------------------------------------------------"
+
+# ----------------------------
 # 10. Setup complete
 # ----------------------------
 echo "==> Setup complete!"
@@ -204,3 +291,5 @@ echo "BLE gateway en Node-RED draaien nu op deze Pi 3."
 echo "Pi heeft statisch IP: $STATIC_IP"
 echo "Node-RED: http://$STATIC_IP:2136"
 echo "Configureer Home Assistant op je mini-pc om MQTT-berichten van deze Pi te ontvangen."
+
+
