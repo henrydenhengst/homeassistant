@@ -67,6 +67,24 @@ echo "==> Static IP configured. Restarting dhcpcd..."
 sudo systemctl restart dhcpcd
 sleep 5
 
+
+# ----------------------------
+# 5b. Configure UFW firewall
+# ----------------------------
+echo "==> Configuring UFW firewall..."
+sudo apt install -y ufw
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Open benodigde poorten
+sudo ufw allow 22/tcp         # SSH
+sudo ufw allow 2136/tcp       # Node-RED
+sudo ufw allow 1883/tcp       # MQTT
+
+sudo ufw --force enable
+sudo ufw status verbose
+echo "✅ Firewall configured."
+
 # ----------------------------
 # 3. Update system packages
 # ----------------------------
