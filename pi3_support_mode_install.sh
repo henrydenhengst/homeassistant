@@ -28,7 +28,7 @@ sudo tee -a /etc/dhcpcd.conf > /dev/null <<EOL
 interface $INTERFACE
 static ip_address=$STATIC_IP/24
 static routers=$ROUTER_IP
-static domain_name_servers=$DNS_SERVER
+static domain_name_servers=$DNS_SERVERS
 EOL
 
 # Herstart netwerk om IP toe te passen
