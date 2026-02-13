@@ -510,6 +510,83 @@ EOF
 # =====================================================
 docker compose -f "$STACK_DIR/docker-compose.yml" up -d
 
+ =====================================================
+# POST-INSTALLATIE CHECK: Controleer of alles draait
+# Beszel Hub wordt NIET meegenomen (handleiding staat apart)
+# =====================================================
+
+STACK_DIR="$HOME/home-assistant"
+DOCKER_COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+HA_IP=$(hostname -I | awk '{print $1}')
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "\n===================================================="
+echo "✅ Start post-installatie checks..."
+echo "===================================================="
+
+# 1️⃣ Docker daemon
+if systemctl is-active --quiet docker; then
+    echo -e "${GREEN}✅ Docker service actief${NC}"
+else
+    echo -e "${RED}❌ Docker service is niet actief!${NC}"
+fi
+
+# 2️⃣ Controleer status van containers (exclusief Beszel)
+EXCLUDE_CONTAINERS="beszel beszel-agent"
+ALL_CONTAINERS=$(docker compose -f "$DOCKER_COMPOSE_FILE" config --services)
+RUNNING_CONTAINERS=$(docker compose -f "$DOCKER_COMPOSE_FILE" ps --services --filter "status=running")
+
+echo -e "\n📦 Controleer containers status..."
+for c in $ALL_CONTAINERS; do
+    if [[ $EXCLUDE_CONTAINERS =~ $c ]]; then
+        continue
+    fi
+
+    if grep -q "^$c$" <<< "$RUNNING_CONTAINERS"; then
+        echo -e "${GREEN}✅ Container '$c' draait${NC}"
+    else
+        echo -e "${RED}❌ Container '$c' draait NIET${NC}"
+    fi
+done
+
+# 3️⃣ Home Assistant bereikbaarheid
+if curl -s -m 5 http://$HA_IP:8123 > /dev/null; then
+    echo -e "${GREEN}✅ Home Assistant bereikbaar op http://$HA_IP:8123${NC}"
+else
+    echo -e "${RED}❌ Home Assistant niet bereikbaar${NC}"
+fi
+
+# 4️⃣ MariaDB connectie
+if docker exec mariadb mysql -uhomeassistant -psecretpassword -e "SELECT 1;" > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ MariaDB database OK${NC}"
+else
+    echo -e "${RED}❌ MariaDB connectie mislukt${NC}"
+fi
+
+# 5️⃣ Mosquitto broker
+if nc -zv $HA_IP 8120 > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Mosquitto MQTT broker actief${NC}"
+else
+    echo -e "${RED}❌ Mosquitto broker niet bereikbaar${NC}"
+fi
+
+# 6️⃣ Homepage dashboard
+if nc -zv $HA_IP 8133 > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Homepage dashboard actief${NC}"
+else
+    echo -e "${RED}❌ Homepage dashboard niet bereikbaar${NC}"
+fi
+
+echo -e "\n===================================================="
+echo "✅ Post-installatie check voltooid!"
+echo "⚠️ Beszel Hub wordt apart geregeld volgens instructies"
+echo "Controleer eventuele foutmeldingen hierboven en start ontbrekende containers handmatig:"
+echo "docker compose -f $DOCKER_COMPOSE_FILE up -d [containernaam]"
+echo "===================================================="
+
 # =====================================================
 # Post-install instructies voor Beszel
 # =====================================================
