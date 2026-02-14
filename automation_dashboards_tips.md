@@ -16,7 +16,6 @@ Hier zijn een paar van de meest gebruikte en gevolgde Home Assistant–gerelatee
 ---
 
 ## 🧩 Community Uitbreidingen / Automation Ecosystem
-
 - **1**
   - Community Store voor custom integrations, cards en themes  
   - Wordt door veel homelabs gebruikt voor automations & UI uitbreiding  
@@ -24,11 +23,9 @@ Hier zijn een paar van de meest gebruikte en gevolgde Home Assistant–gerelatee
 ---
 
 ## 🔌 Device / Automation Ecosystem (Zeer populair in homelabs)
-
 - **2**
   - Automations via ESP32 / ESP8266  
   - Veel gebruikt voor sensoren, relais, BLE proxy’s  
-
 - **3**
   - Zigbee devices volledig lokaal via MQTT  
   - Groot community automation ecosysteem  
@@ -36,15 +33,12 @@ Hier zijn een paar van de meest gebruikte en gevolgde Home Assistant–gerelatee
 ---
 
 ## 📦 Config / Automation Voorbeeld Repositories (Community Favorieten)
-
 Niet core, maar wel populair bij power users:
-
 - Complete Home Assistant configuraties  
 - Blueprint collecties (automation templates)  
 - Custom component bundels  
 
 Typische zoektermen op 
-
 - **4**:
   - home assistant config 
   - home assistant blueprints 
