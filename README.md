@@ -33,6 +33,13 @@ Alle Docker-installaties gebruiken de **officiële Docker repositories** voor De
 > **Technische documentatie:** Alle installatie- en configuratiestappen zijn gedetailleerd beschreven in [`install.sh`](./install.sh).
 
 
+## 🔹 Home Assistant Apparatuur
+
+Voor een volledig overzicht van alle apparaten die je kunt integreren met Home Assistant, zie [apparatuur.md](./apparatuur.md).
+
+> Tip: Hier vind je zowel veelvoorkomende apparaten, vergeten apparaten en Bluetooth (BLE) apparaten met integratie tips.
+
+
 ---
 
 ## Functies
