@@ -149,6 +149,9 @@ Meest gekozen combinatie:
 Deze naming convention zorgt voor consistente, schaalbare en leesbare namen binnen je Home Assistant omgeving.  
 Dit maakt debugging, dashboards, automatiseringen en MQTT-integraties veel eenvoudiger.
 
+
+**GitHub Repository:** [Trikos / Home-Assistant-Naming-Convention](https://github.com/Trikos/Home-Assistant-Naming-Convention)
+
 ---
 
 ## 🎯 Basis Principe
