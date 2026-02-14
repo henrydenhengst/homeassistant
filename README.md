@@ -259,7 +259,7 @@ Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt
 
 ---
 
-
+```
 flowchart TD
     %% Home Automation Core
     HA[Home Assistant]
