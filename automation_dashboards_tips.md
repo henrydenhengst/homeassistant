@@ -17,7 +17,7 @@ Hier zijn een paar van de meest gebruikte en gevolgde Home Assistant–gerelatee
 
 ## 🧩 Community Uitbreidingen / Automation Ecosystem
 
-- **1**
+- **1**
   - Community Store voor custom integrations, cards en themes  
   - Wordt door veel homelabs gebruikt voor automations & UI uitbreiding  
 
