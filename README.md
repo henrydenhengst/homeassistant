@@ -37,6 +37,18 @@ Alle Docker-installaties gebruiken de **officiële Docker repositories** voor De
 
 > **Technische documentatie:** Alle installatie- en configuratiestappen zijn gedetailleerd beschreven in [`install.sh`](./install.sh).
 
+## Problemen melden
+
+Ondervind je een probleem? Open dan een *issue* op GitHub.
+
+Voeg hierbij altijd het bestand `ha-install.log` toe.  
+Dit logbestand helpt bij het analyseren en oplossen van het probleem.
+
+**Zo voeg je het logbestand toe:**
+1. Open een nieuw issue.
+2. Sleep het bestand `ha-install.log` in het tekstveld, of voeg het toe via de uploadfunctie.
+3. Beschrijf zo duidelijk mogelijk wat er misgaat en wanneer het probleem optreedt.
+
 ---
 
 ## 🔹 Home Assistant Apparatuur
