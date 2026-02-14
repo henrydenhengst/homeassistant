@@ -65,3 +65,8 @@
 4. **Direct vs. gateway** – sommige BLE-apparaten vereisen een app of gateway (bijv. Xiaomi Gateway)  
 
 > 💡 Veel apparaten in huis hebben al een Bluetooth- of slimme variant. Met BLE2MQTT, Zigbee2MQTT of directe integratie kun je ze volledig automatiseren in Home Assistant.
+
+## 🔹 Terug naar Homelab README
+
+Wil je terug naar de hoofddocumentatie van je Homelab-stack?  
+Klik hier: [README.md](./README.md)
