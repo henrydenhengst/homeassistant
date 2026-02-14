@@ -4,7 +4,7 @@
 
 ## Inhoudsopgave
 - [Overzicht](#overzicht)
-- [Functies](#Supporting Services in het Script)
+- [Functies](#Supporting-Services-in-het-Script)
   - [Home Assistant](#home-assistant)
   - [Beszel](#beszel)
   - [Homepage](#homepage)
