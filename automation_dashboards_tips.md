@@ -85,8 +85,6 @@ Hier zijn een paar van de meest gebruikte en bekeken dashboard-projecten binnen 
 ## 🖥️ Complete Dashboard Projecten
 
 ### 1. Dwains Lovelace Dashboard
-- Platform:0
-- Maker:1
 - Waarom populair:
   - Auto genereert dashboards op basis van Home Assistant entities  
   - Werkt goed op tablet dashboards en wall panels  
@@ -95,7 +93,6 @@ Hier zijn een paar van de meest gebruikte en bekeken dashboard-projecten binnen 
 ---
 
 ### 2. Mushroom Dashboard Ecosystem
-- Maker:2
 - Waarom populair:
   - Moderne minimalistische UI  
   - Zeer populair samen met HACS  
@@ -104,7 +101,6 @@ Hier zijn een paar van de meest gebruikte en bekeken dashboard-projecten binnen 
 ---
 
 ### 3. Madelena Home Assistant Config
-- Maker:3
 - Waarom populair:
   - Zeer geavanceerde dashboards  
   - Veel inspiratie voor power users  
@@ -113,7 +109,6 @@ Hier zijn een paar van de meest gebruikte en bekeken dashboard-projecten binnen 
 ---
 
 ### 4. Home Assistant Mobile First Dashboard
-- Maker:4
 - Waarom populair:
   - Ontworpen voor telefoon gebruik  
   - Snel en clean  
@@ -122,7 +117,6 @@ Hier zijn een paar van de meest gebruikte en bekeken dashboard-projecten binnen 
 ---
 
 ### 5. Adaptive Mushroom Dashboard Packs
-- Maker:5
 - Waarom populair:
   - Responsive layouts  
   - Combineert Mushroom cards tot complete dashboards  
