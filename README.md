@@ -284,12 +284,11 @@ Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt
  │ (HA DB)     │                    │ Metrics  │
  └──────┬─────┘                    └────┬─────┘
         │                                 │
-        │                                 │
-  ┌─────▼────────┐                   ┌────▼─────┐
-  │ Grafana      │                   │ RedNode  │
+        │ Dashboard / Data                │ Dashboard / Metrics
+  ┌─────▼────────┐                   ┌────▼────────┐
+  │ Grafana      │                   │ RedNode     │
   │ Dashboard    │                   │ Flow Editor │
-  └─────┬────────┘                   └────┬─────┘
-        │                                 │
+  └─────┬────────┘                   └────┬───────┘
         │ Dashboard / Automations         │ Flows / MQTT / API
  ┌──────▼────────┐                   ┌────▼────────┐
  │ Beszel Hub    │                   │ Homepage    │
@@ -301,7 +300,6 @@ Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt
  │ Uptime-Kuma  │                   │ IT-Tools     │
  │ Alerts       │                   │ Diagnostics  │
  └──────────────┘                   └──────────────┘
-
 
 ---
 
