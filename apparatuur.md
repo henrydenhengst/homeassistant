@@ -22,6 +22,9 @@
 
 # 🔹 Slimme apparaten voor Home Assistant
 
+![Futuristisch Slim Huis](1771065584734.png)
+
+
 ## Veelvoorkomende apparaten
 - **Slimme verlichting** – Philips Hue, Ikea Tradfri, LIFX  
 - **Slimme thermostaten** – Nest, Tado, Honeywell  
