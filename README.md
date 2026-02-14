@@ -222,6 +222,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 ---
 
 ## Roadmap
+Geplande uitbreidingen en verbeteringen voor de homelab stack:
 - [ ] Modulair installatiescript (per service modules)
 - [ ] Ansible deployment ondersteuning
 - [ ] Kubernetes / Helm stack variant
