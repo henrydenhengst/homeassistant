@@ -277,3 +277,7 @@ Gebruik vaste area namen zoals:
 - `tuin`
 - `server`
 - `netwerk`
+
+
+Wil je terug naar de hoofddocumentatie van je Homelab-stack?  
+Klik hier: [README.md](./README.md)
