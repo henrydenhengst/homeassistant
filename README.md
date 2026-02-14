@@ -106,7 +106,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - Waarschuwingen bij downtime.
 
 ### RedNode
-- Web-based flow editor en visual programming tool voor Home Automation en IoT, vergelijkbaar met Node-RED.
+- Web-based flow editor en visual programming tool voor Home Automation en IoT.
 - Werkt samen met Home Assistant via MQTT, API’s en websockets.
 
 ### Grafana & InfluxDB
