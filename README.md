@@ -220,6 +220,15 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 
 ---
 
+## Roadmap
+- [ ] Modulair installatiescript (per service modules)
+- [ ] Ansible deployment ondersteuning
+- [ ] Kubernetes / Helm stack variant
+- [ ] Multi-node en schaalbare homelab architectuur
+- [ ] High Availability (HA) clustering
+
+---
+
 ## FlowChart 
 (klik voor uitvergroting afbeelding)
 
