@@ -259,61 +259,48 @@ Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt
 
 ---
 
-## Installatie Flow (Functioneel)
-
-```text
-                     ┌──────────────┐
+┌──────────────┐
                      │ Home         │
                      │ Assistant    │
                      └─────┬────────┘
                            │ MQTT
           ┌────────────────┴───────────────┐
-          │                                │
+          │                               │
   ┌───────▼────────┐              ┌────────▼────────┐
   │ Zigbee2MQTT    │              │ Z-Wave JS       │
   │ (Zigbee USB)   │              │ (Z-Wave USB)    │
   └────────────────┘              └────────────────┘
-          │                                │
-          └─────────────┬──────────────────┘
+          │                               │
+          └─────────────┬─────────────────┘
                         │ MQTT
                   ┌─────▼─────┐
                   │ Mosquitto │
                   └─────┬─────┘
                         │
-                        │ Data
-       ┌────────────────┴───────────────┐
-       │                               │
-┌──────▼─────┐                   ┌─────▼─────┐
-│ MariaDB     │                   │ InfluxDB  │
-│ (HA DB)     │                   │ Metrics   │
-└──────┬─────┘                   └─────┬─────┘
-       │                                 │
-       │                                 │
-       │                           ┌─────▼─────┐
-       │                           │ Grafana   │
-       │                           │ Dashboard │
-       │                           └───────────┘
-       │
-       │
-       │
- ┌─────▼────────┐
- │ Beszel Hub   │
- │ + Agent      │
- └─────┬────────┘
-       │ Stats
-       │
- ┌─────▼────────┐
- │ Homepage     │
- │ Dashboard    │
- │ Links/Status │
- └─────┬────────┘
-       │
-       │ Monitors
- ┌─────▼────────┐
- │ Uptime-Kuma  │
- │ Alerts       │
- └──────────────┘
-
+        ┌───────────────┴───────────────┐
+        │                               │
+ ┌──────▼─────┐                    ┌────▼─────┐
+ │ MariaDB     │                    │ InfluxDB │
+ │ (HA DB)     │                    │ Metrics  │
+ └──────┬─────┘                    └────┬─────┘
+        │                                 │
+        │                                 │
+  ┌─────▼────────┐                   ┌────▼─────┐
+  │ Grafana      │                   │ RedNode  │
+  │ Dashboard    │                   │ Flow Editor │
+  └─────┬────────┘                   └────┬─────┘
+        │                                 │
+        │ Dashboard / Automations         │ Flows / MQTT / API
+ ┌──────▼────────┐                   ┌────▼────────┐
+ │ Beszel Hub    │                   │ Homepage    │
+ │ + Agent       │                   │ Dashboard   │
+ └─────┬─────────┘                   └────┬────────┘
+       │ Stats / Monitoring                │ Links / Status
+       │                                   │
+ ┌─────▼────────┐                   ┌─────▼────────┐
+ │ Uptime-Kuma  │                   │ IT-Tools     │
+ │ Alerts       │                   │ Diagnostics  │
+ └──────────────┘                   └──────────────┘
 
 
 ---
