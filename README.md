@@ -1,5 +1,7 @@
 # 🏠 Homelab Dashboard & Automation Stack
 
+![Dashboard](1771065902347.png)
+
 ## Inhoudsopgave
 - [Overzicht](#overzicht)
 - [Functies](#functies)
