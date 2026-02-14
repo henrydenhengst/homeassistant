@@ -38,6 +38,14 @@ Deze homelab-stack biedt een complete plug-and-play omgeving voor smart home aut
 
 > **Een complete, productie-gerichte homelab stack voor Home Assistant, monitoring, automatisering en containerbeheer — volledig Docker-based en direct inzetbaar.**
 
+### Waarom deze stack?
+
+- 🐳 Volledig Docker-based
+- 🔒 Network hardening standaard ingeschakeld
+- 📊 Volledige monitoring stack inbegrepen
+- 🔁 Automatische backups
+- 🔌 Hardware auto-detectie
+
 ![Overzicht](file_00000000b1b8720a8f62a8119cd0ae13.png)
 
 Alle Docker-installaties gebruiken de **officiële Docker repositories** voor Debian 13, zodat je altijd de nieuwste stabiele versie krijgt.
