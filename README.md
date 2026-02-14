@@ -7,6 +7,7 @@
   - [Beszel](#beszel)
   - [Homepage](#homepage)
   - [Uptime-Kuma](#uptime-kuma)
+  - [RedNode](#rednode)
   - [Grafana & InfluxDB](#grafana--influxdb)
   - [Portainer](#portainer)
   - [Dozzle](#dozzle)
