@@ -85,8 +85,8 @@ Hier zijn een paar van de meest gebruikte en bekeken dashboard-projecten binnen 
 ## 🖥️ Complete Dashboard Projecten
 
 ### 1. Dwains Lovelace Dashboard
-- Platform: 0  
-- Maker: 1  
+- Platform:0  
+- Maker:1  
 - Waarom populair:
   - Auto genereert dashboards op basis van Home Assistant entities  
   - Werkt goed op tablet dashboards en wall panels  
