@@ -247,6 +247,7 @@ Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt
 | 8133   | Homepage               | Startpagina/dashboard voor web-apps                  |
 | 8134   | CrowdSec               | Security & threat monitoring                           |
 | 8135   | IT-Tools               | Diagnostics & monitoring tools                        |
+| 2136   | RedNode   | Flow editor voor automatiseringen, integratie met Home Assistant via MQTT/API |
 | --     | Watchtower             | Automatische container updates                        |
 | --     | Beszel Agent           | Metric agent van de host                               |
 | --     | DuckDNS                | Dynamische DNS update service                          |
