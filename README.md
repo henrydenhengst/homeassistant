@@ -1,5 +1,10 @@
 # 🏠 Homelab Dashboard & Automation Stack
 
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
+![Debian](https://img.shields.io/badge/Debian-13-red)
+![Status](https://img.shields.io/badge/Status-Stable-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
 ![Dashboard](1771065902347.png)
 
 ## Inhoudsopgave
