@@ -6,7 +6,7 @@ Hier zijn een paar van de meest gebruikte en gevolgde Home Assistant–gerelatee
 
 ## 🏠 Core Platform
 
-- **0 – Core repositories**
+- **0 – Core repositories**
   - `home-assistant/core` → Hoofd Home Assistant software  
   - `home-assistant/frontend` → UI / dashboard  
   - `home-assistant/supervisor` → OS / add-on beheer  
