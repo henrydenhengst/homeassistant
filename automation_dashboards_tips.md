@@ -185,7 +185,7 @@ Prefix: `sensor.`
 
 ---
 
-### Binary Sensors
+### 🚨 Binary Sensors
 Prefix: `binary_sensor.`
 
 **Voorbeelden:**
@@ -196,7 +196,7 @@ Prefix: `binary_sensor.`
 
 ---
 
-### Lights
+### 💡 Lights
 Prefix: `light.`
 
 **Voorbeelden:**
@@ -207,7 +207,7 @@ Prefix: `light.`
 
 ---
 
-### Switches
+### 🔄 Switches
 Prefix: `switch.`
 
 **Voorbeelden:**
