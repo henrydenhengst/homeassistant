@@ -77,6 +77,8 @@ Hier zijn een paar van de meest gebruikte en bekeken dashboard-projecten binnen 
 
 ---
 
+![Dashboard and Automation](1771108288564.png)
+
 ## 🖥️ Complete Dashboard Projecten
 
 ### 1. Dwains Lovelace Dashboard
