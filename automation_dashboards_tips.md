@@ -143,6 +143,7 @@ Meest gekozen combinatie:
 👉 Mushroom Cards + eigen Lovelace dashboard  
 👉 Of Dwains als “auto dashboard” startpunt
 
+
 # 🏷️ Home Assistant Naming Convention
 
 Deze naming convention zorgt voor consistente, schaalbare en leesbare namen binnen je Home Assistant omgeving.  
@@ -152,94 +153,124 @@ Dit maakt debugging, dashboards, automatiseringen en MQTT-integraties veel eenvo
 
 ## 🎯 Basis Principe
 
-**Area → Device → Functie**
+**Structuur:**  
+`area.device_function`
 
-Voorbeeld:
-`sensor.woonkamer_temperatuur`
-`light.keuken_spots` 
-`switch.server_rack_power`
+**Voorbeelden:**
+
+- `sensor.woonkamer_temperatuur`
+- `light.keuken_spots`
+- `switch.server_rack_power`
 
 ---
 
 ## 📦 Entities
 
 ### Sensors
-sensor._
+Prefix: `sensor.`
 
-Voorbeelden:
-sensor.woonkamer_temperatuur sensor.slaapkamer_luchtvochtigheid sensor.server_cpu_temp
+**Voorbeelden:**
+
+- `sensor.woonkamer_temperatuur`
+- `sensor.slaapkamer_luchtvochtigheid`
+- `sensor.server_cpu_temp`
 
 ---
 
 ### Binary Sensors
-binary_sensor._
+Prefix: `binary_sensor.`
 
-Voorbeelden:
-binary_sensor.voordeur_contact binary_sensor.garage_beweging binary_sensor.server_rack_deur
+**Voorbeelden:**
+
+- `binary_sensor.voordeur_contact`
+- `binary_sensor.garage_beweging`
+- `binary_sensor.server_rack_deur`
 
 ---
 
 ### Lights
-light._
+Prefix: `light.`
 
-Voorbeelden:
-light.woonkamer_plafond light.keuken_spots light.tuin_padverlichting
+**Voorbeelden:**
+
+- `light.woonkamer_plafond`
+- `light.keuken_spots`
+- `light.tuin_padverlichting`
 
 ---
 
 ### Switches
-switch._
+Prefix: `switch.`
 
-Voorbeelden:
-switch.server_rack_fan switch.printer_power switch.tv_stekker
+**Voorbeelden:**
+
+- `switch.server_rack_fan`
+- `switch.printer_power`
+- `switch.tv_stekker`
 
 ---
 
 ## 🤖 Automations
-automation._
+Prefix: `automation.`
 
-Voorbeelden:
-automation.licht_aan_bij_beweging_hal automation.verwarming_eco_nacht automation.notificatie_wasmachine_klaar
+**Voorbeelden:**
+
+- `automation.licht_aan_bij_beweging_hal`
+- `automation.verwarming_eco_nacht`
+- `automation.notificatie_wasmachine_klaar`
 
 ---
 
 ## 📜 Scripts
-script._
+Prefix: `script.`
 
-Voorbeelden:
-script.alles_uit_slapen script.film_kijken_scene script.server_onderhoud_mode
+**Voorbeelden:**
+
+- `script.alles_uit_slapen`
+- `script.film_kijken_scene`
+- `script.server_onderhoud_mode`
 
 ---
 
 ## 📡 MQTT Naming (Aanbevolen)
+**Structuur:**  
+`home/<area>/<device>/<function>`
 
-Topic structuur:
-home///
+**Voorbeelden:**
 
-Voorbeelden:
-home/woonkamer/thermostaat/temperatuur home/garage/deur/contact home/server/rack/temperatuur
+- `home/woonkamer/thermostaat/temperatuur`
+- `home/garage/deur/contact`
+- `home/server/rack/temperatuur`
 
 ---
 
 ## 📊 Dashboard Friendly Naming
+Gebruik korte maar duidelijke namen voor Lovelace dashboards of widgets:
 
-Gebruik korte maar duidelijke namen:
-woonkamer_temp garage_deur server_cpu
+- `woonkamer_temp`
+- `garage_deur`
+- `server_cpu`
 
 ---
 
 ## 🚀 Best Practices
 
-✅ Gebruik altijd lowercase  
-✅ Gebruik underscores `_` i.p.v. spaties  
-✅ Gebruik consistente ruimte namen  
-✅ Vermijd afkortingen (tenzij standaard zoals cpu, ram, temp)  
-✅ Houd namen logisch voor dashboards én automations  
+- ✅ Gebruik altijd lowercase  
+- ✅ Gebruik underscores `_` in plaats van spaties  
+- ✅ Houd consistente area namen aan  
+- ✅ Vermijd afkortingen, tenzij standaard (cpu, ram, temp)  
+- ✅ Houd namen logisch voor dashboards én automations  
 
 ---
 
 ## 🧠 Tip voor Grote Homelabs
+Gebruik vaste area namen zoals:
 
-Gebruik vaste area namen:
-woonkamer keuken slaapkamer badkamer garage tuin server netwerk
-
+- `woonkamer`
+- `keuken`
+- `slaapkamer`
+- `badkamer`
+- `garage`
+- `tuin`
+- `server`
+- `netwerk`
