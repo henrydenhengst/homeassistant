@@ -260,35 +260,34 @@ Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt
 ---
 
 
-```mermaid
 flowchart TD
     %% Home Automation Core
     HA[Home Assistant]
-    Z2M[Zigbee2MQTT<br>(Zigbee USB)]
-    ZWave[Z-Wave JS<br>(Z-Wave USB)]
-    BLE2MQTT[BLE2MQTT<br>(BLE devices)]
-    MQTTIR[MQTT-IR / Beszel Hub<br>(IR devices)]
+    Z2M[Zigbee2MQTT\n(Zigbee USB)]
+    ZWave[Z-Wave JS\n(Z-Wave USB)]
+    BLE2MQTT[BLE2MQTT\n(BLE devices)]
+    MQTTIR[MQTT-IR / Beszel Hub\n(IR devices)]
     P1[Smart Meter P1 Monitor / Uptime-Kuma]
-    Mosq[Mosquitto<br>MQTT Broker]
+    Mosq[Mosquitto\nMQTT Broker]
 
     %% Databases
-    MariaDB[MariaDB<br>HA DB]
-    Influx[InfluxDB<br>Metrics DB]
+    MariaDB[MariaDB\nHA DB]
+    Influx[InfluxDB\nMetrics DB]
 
     %% Dashboards / Monitoring
-    Grafana[Grafana<br>Dashboard]
-    RedNode[RedNode<br>Flow Editor]
+    Grafana[Grafana\nDashboard]
+    RedNode[RedNode\nFlow Editor]
     Beszel[Beszel Hub + Agent]
     Homepage[Homepage Dashboard]
-    Uptime[Uptime-Kuma<br>Alerts]
-    IT[IT-Tools<br>Diagnostics]
+    Uptime[Uptime-Kuma\nAlerts]
+    IT[IT-Tools\nDiagnostics]
 
     %% Additional Services
-    Portainer[Portainer<br>Docker Management]
-    Dozzle[Dozzle<br>Container Logs]
-    DuckDNS[DuckDNS<br>Dynamic DNS]
-    CrowdSec[CrowdSec<br>Security Monitoring]
-    Watchtower[Watchtower<br>Auto Container Updates]
+    Portainer[Portainer\nDocker Management]
+    Dozzle[Dozzle\nContainer Logs]
+    DuckDNS[DuckDNS\nDynamic DNS]
+    CrowdSec[CrowdSec\nSecurity Monitoring]
+    Watchtower[Watchtower\nAuto Container Updates]
 
     %% Connections: Devices -> MQTT
     Z2M -->|MQTT| Mosq
