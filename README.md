@@ -70,6 +70,14 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - Monitoren van uptime van services en externe websites.
 - Waarschuwingen en meldingen bij downtime.
 
+
+### RedNode
+- **Wat is het:** Een web-based flow editor en visual programming tool voor Home Automation en IoT, vergelijkbaar met Node-RED.  
+- **Functie:** Stroomlijnen van automatiseringen, logica, triggers en device-interacties.  
+- **Integratie:** Werkt samen met Home Assistant via MQTT, API’s en websockets.  
+- **Voordelen:** Drag-and-drop flows, eenvoudige debugging en real-time data monitoring.
+
+
 ### Grafana & InfluxDB
 - Historische metrics en visualisatie van systeem- en containerstatistieken.
 - Grafana dashboards voor CPU, RAM, Disk, Docker containers en meer.
