@@ -60,7 +60,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 
 ---
 
-## Functies
+## Supporting Services in het Script 
 
 ### Home Assistant
 - Centrale smart home hub.
