@@ -51,6 +51,8 @@ Dit logbestand helpt bij het analyseren en oplossen van het probleem.
 2. Sleep het bestand `ha-install.log` in het tekstveld, of voeg het toe via de uploadfunctie.
 3. Beschrijf zo duidelijk mogelijk wat er misgaat en wanneer het probleem optreedt.
 
+> ⚠️ **Issues zonder logbestand kunnen mogelijk niet in behandeling worden genomen.**
+
 ---
 
 ## 🔹 Home Assistant Apparatuur
