@@ -1,5 +1,7 @@
 # 🔹 Home Assistant Apparaten Overzicht
 
+![My Homelab](1771065157261.png)
+
 | Categorie                | Voorbeeldapparaat                   | Verbinding        | Mogelijkheden / Automatisering                     |
 |---------------------------|------------------------------------|-----------------|--------------------------------------------------|
 | Slimme verlichting        | Philips Hue, LIFX, Ikea Tradfri    | Zigbee / Wi-Fi  | Aan/uit, dimmen, scenes, timers                  |
