@@ -18,7 +18,6 @@
 | Fitnesstrackers / smartwatches | Fitbit, Apple Watch            | BLE             | Aanwezigheid, activiteit logging               |
 | Deur/raam sensoren        | Xiaomi, Aqara                      | Zigbee / BLE    | Open/dicht detectie, alarm                     |
 
-
 # 🔹 Slimme apparaten voor Home Assistant
 
 ## Veelvoorkomende apparaten
@@ -66,40 +65,3 @@
 4. **Direct vs. gateway** – sommige BLE-apparaten vereisen een app of gateway (bijv. Xiaomi Gateway)  
 
 > 💡 Veel apparaten in huis hebben al een Bluetooth- of slimme variant. Met BLE2MQTT, Zigbee2MQTT of directe integratie kun je ze volledig automatiseren in Home Assistant.
-
-
-# 🔹 Bluetooth apparaten voor Home Assistant
-
-## Gezondheid & persoonlijke apparaten
-- **Slimme weegschalen** – gewicht, vetpercentage, BMI (Fitbit, Withings, Xiaomi)  
-- **Slimme bloeddrukmeters / saturatiemeters** – via BLE naar Home Assistant loggen  
-- **Fitnesstrackers / smartwatches** – aanwezigheid, hartslag, slaapdata  
-
-## Sensoren & comfort
-- **Temperatuur- en luchtvochtigheidssensoren** – Xiaomi Aqara, Govee, Eve  
-- **Deur/raam sensoren** – open/dicht status zonder hub  
-- **Waterleksensoren** – plaatsen onder wasmachine, boiler of keukenkastjes  
-- **Lichtschakelaars / dimmers** – BLE of Zigbee varianten  
-
-## Audio & entertainment
-- **Bluetooth speakers** – status detectie (aan/uit, volume)  
-- **Headphones** – detecteer aanwezigheid van personen  
-- **TV / soundbar afstandsbediening** – sommige apparaten melden status via BLE  
-
-## Huisdieren & leefomgeving
-- **Slimme kattenluiken / hondenkluiken** – openen via BLE RFID-tag  
-- **Aquarium sensoren** – temperatuur, waterniveau, pH  
-- **Terrarium lampen / klimaatcontrole** – log + automatisering  
-
-## Energie & apparaten
-- **Slimme stekkers / plugs** – BroadLink, Meross, Xiaomi  
-- **Slimme lampen** – direct via BLE (Philips Hue, Ikea Tradfri, LIFX)  
-- **E-bike of elektrische scooter** – batterijstatus monitoren met BLE adapter  
-
-## Tips voor Home Assistant integratie
-1. **BLE2MQTT** – maakt bijna elk BLE-device zichtbaar in Home Assistant via MQTT  
-2. **Zigbee2MQTT / Z-Wave** – sommige apparaten hebben zowel Zigbee/BLE varianten  
-3. **RSSI signalen** – gebruik BLE-sensoren voor aanwezigheid in kamers  
-4. **Direct vs. gateway** – sommige BLE-apparaten vereisen een app of gateway (bijv. Xiaomi Gateway)  
-
-> 💡 Veel apparaten in huis hebben al een Bluetooth-variant. Met BLE2MQTT of directe integratie kun je ze volledig automatiseren in Home Assistant.
