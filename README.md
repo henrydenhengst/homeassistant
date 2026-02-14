@@ -188,7 +188,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 \* Poorten kunnen verschillen afhankelijk van device-configuratie.  
 
 
-##FlowChart 
+## FlowChart 
 (klik voor uitvergroting afbeelding)
 
 
