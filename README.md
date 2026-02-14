@@ -14,7 +14,7 @@
   - [Beszel](#beszel)
   - [Homepage](#homepage)
   - [Uptime-Kuma](#uptime-kuma)
-  - [Node-RED](#noderer)
+  - [Node-RED](#node-red)
   - [Grafana & InfluxDB](#grafana--influxdb)
   - [Portainer](#portainer)
   - [Dozzle](#dozzle)
