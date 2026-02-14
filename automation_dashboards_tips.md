@@ -155,7 +155,9 @@ Dit maakt debugging, dashboards, automatiseringen en MQTT-integraties veel eenvo
 **Area → Device → Functie**
 
 Voorbeeld:
-sensor.woonkamer_temperatuur light.keuken_spots switch.server_rack_power
+`sensor.woonkamer_temperatuur`
+`light.keuken_spots` 
+`switch.server_rack_power`
 
 ---
 
