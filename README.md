@@ -29,6 +29,8 @@
 ## Overzicht
 Deze homelab-stack biedt een complete plug-and-play omgeving voor smart home automatisering, monitoring en serverbeheer. Het draait op **Debian 13 Minimal** en gebruikt Docker containers voor maximale isolatie, stabiliteit en eenvoud.  
 
+![Overzicht](file_00000000b1b8720a8f62a8119cd0ae13.png)
+
 Alle Docker-installaties gebruiken de **officiële Docker repositories** voor Debian 13, zodat je altijd de nieuwste stabiele versie krijgt.
 
 > **Technische documentatie:** Alle installatie- en configuratiestappen zijn gedetailleerd beschreven in [`install.sh`](./install.sh).
