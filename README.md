@@ -14,7 +14,7 @@
   - [Beszel](#beszel)
   - [Homepage](#homepage)
   - [Uptime-Kuma](#uptime-kuma)
-  - [RedNode](#rednode)
+  - [Node-RED](#noderer)
   - [Grafana & InfluxDB](#grafana--influxdb)
   - [Portainer](#portainer)
   - [Dozzle](#dozzle)
@@ -105,7 +105,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - Monitoren van uptime van services en externe websites.
 - Waarschuwingen bij downtime.
 
-### RedNode
+### Node-RED
 - Web-based flow editor en visual programming tool voor Home Automation en IoT.
 - Werkt samen met Home Assistant via MQTT, API’s en websockets.
 
@@ -212,7 +212,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 | 8133   | Homepage               | Startpagina/dashboard voor web-apps                  |
 | 8134   | CrowdSec               | Security & threat monitoring                          |
 | 8135   | IT-Tools               | Diagnostics & monitoring tools                        |
-| 8136   | RedNode                | Flow editor voor automatiseringen via MQTT/API       |
+| 8136   | Node-RED               | Flow editor voor automatiseringen via MQTT/API       |
 | --     | Watchtower             | Automatische container updates                        |
 | --     | Beszel Agent           | Metric agent van de host                               |
 | --     | DuckDNS                | Dynamische DNS update service                          |
