@@ -37,11 +37,6 @@ Niet core, maar wel populair bij power users:
 - Complete Home Assistant configuraties  
 - Blueprint collecties (automation templates)  
 - Custom component bundels  
-Typische zoektermen op 
-- **4**:
-  - home assistant config 
-  - home assistant blueprints 
-  - home assistant automations
 
 ---
 
