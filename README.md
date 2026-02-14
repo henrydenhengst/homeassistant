@@ -228,6 +228,7 @@ Geplande uitbreidingen en verbeteringen voor de homelab stack:
 - [ ] Kubernetes / Helm stack variant
 - [ ] Multi-node en schaalbare homelab architectuur
 - [ ] High Availability (HA) clustering
+> De roadmap laat toekomstige uitbreidingen zien voor meer modulariteit, schaalbaarheid en high-availability opties.
 
 ---
 
