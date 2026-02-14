@@ -24,7 +24,7 @@
 - [Additional services](#additional-services)
 - [Aanbevolen GitHub Repositories](#aanbevolen-github-repositories)
 - [Services & Poorten Overzicht](#services--poorten-overzicht)
-- [Mermaid Diagram](#mermaid-diagram)
+- [Mermaid Diagram](#flowchart)
 
 ---
 
