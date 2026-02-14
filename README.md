@@ -44,6 +44,8 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 
 > Tip: bevat veelvoorkomende apparaten, vergeten apparaten en Bluetooth (BLE) apparaten met integratie tips.
 
+[Home Assistant Automations & Dashboards Tips](automation_dashboards_tips.md)
+
 ---
 
 ## Functies
