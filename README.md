@@ -303,5 +303,5 @@ Hier is een overzicht van populaire Home Assistant dashboards die je direct kunt
  │ Alerts       │                   │ Diagnostics  │
  └──────────────┘                   └──────────────┘
 
----
+
 
