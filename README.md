@@ -31,6 +31,8 @@
 ## Overzicht
 Deze homelab-stack biedt een complete plug-and-play omgeving voor smart home automatisering, monitoring en serverbeheer. Het draait op **Debian 13 Minimal** en gebruikt Docker containers voor maximale isolatie, stabiliteit en eenvoud.  
 
+> **Een complete, productie-gerichte homelab stack voor Home Assistant, monitoring, automatisering en containerbeheer — volledig Docker-based en direct inzetbaar.**
+
 ![Overzicht](file_00000000b1b8720a8f62a8119cd0ae13.png)
 
 Alle Docker-installaties gebruiken de **officiële Docker repositories** voor Debian 13, zodat je altijd de nieuwste stabiele versie krijgt.
