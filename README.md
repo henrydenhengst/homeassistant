@@ -192,6 +192,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - [Homepage](https://github.com/gethomepage/homepage) – Startpagina/dashboard  
 - [IT-Tools](https://github.com/corentinth/it-tools) – Diagnostics & monitoring  
 - [Node-RED](https://github.com/node-red/node-red) – Flow-based automation en integratie tool
+- [Dozzle](https://github.com/amir20/dozzle) – Real-time Docker log viewer via webinterface
 
 ---
 
