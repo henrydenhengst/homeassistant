@@ -53,6 +53,12 @@
 set -e
 set -o pipefail
 
+# -------------------------------
+# Log redirectie meteen starten
+# -------------------------------
+mkdir -p "$STACK_DIR"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
 # ======================
 # Controleer en installeer extra tools voor hardware checks
 # ======================
