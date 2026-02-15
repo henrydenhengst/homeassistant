@@ -1,4 +1,51 @@
+
 #!/bin/bash
+# =====================================================
+# FULL HOME ASSISTANT ANSIBLE STACK INSTALLER
+# =====================================================
+# Auteur: Henry den Hengst 
+# Doel: Volledige Home Assistant homelab stack deployen
+#       met alle benodigde containers en Ansible.
+#
+# Wat dit script doet:
+# 1. Installeert basis dependencies en tools op Debian 13:
+#    - Docker, docker-compose
+#    - Ansible (met Python3 en pip)
+#    - Git, curl, sudo
+#
+# 2. Maakt directories aan voor alle containers:
+#    - homeassistant, MariaDB, Mosquitto, Zigbee2MQTT, Z-Wave JS,
+#      BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor, ESPHome, Node-RED,
+#      Portainer, Watchtower, Dozzle, InfluxDB, Grafana, Beszel Hub+Agent,
+#      Homepage, Uptime-Kuma, IT-Tools, CrowdSec, DuckDNS
+#
+# 3. Genereert een docker-compose Jinja2-template voor de volledige stack.
+#
+# 4. Genereert een Ansible playbook:
+#    - Deployt de docker-compose template
+#    - Start alle containers
+#    - Controleert containerstatus
+#
+# 5. Voert het playbook direct uit.
+#
+# Mogelijkheden:
+# - Lokaal draaien via 'local' inventory entry
+# - Remote deployment op meerdere Debian 13 servers via SSH en Ansible
+# - Variabelen aanpassen: TZ, DuckDNS-token, DuckDNS-subdomain, HA_STACK_DIR
+# - Containers starten/updaten of logs bekijken
+#
+# Vereisten:
+# - Debian 13 of compatibele distributie
+# - Root-toegang op de host(s)
+# - SSH-toegang bij remote deployment
+#
+# Logs:
+# - Alles wordt weggeschreven naar $HOME/ha-ansible-full.log
+#
+# Gebruik:
+#   sudo ./ha_ansible_full.sh
+# =====================================================
+
 set -e
 set -o pipefail
 
