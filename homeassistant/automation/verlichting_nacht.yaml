@@ -1,0 +1,27 @@
+alias: "Verlichting Nachtmodus"
+description: "Zet zachte verlichting aan bij beweging tussen 23:00 - 06:00"
+trigger:
+  - platform: state
+    entity_id: binary_sensor.woonkamer_beweging
+    to: 'on'
+condition:
+  - condition: time
+    after: '23:00:00'
+    before: '06:00:00'
+action:
+  - service: light.turn_on
+    target:
+      entity_id: light.woonkamer_plafond
+    data:
+      brightness_pct: 20   # zacht licht
+      kelvin: 2700         # warm licht
+  - service: notify.telegram_primary
+    data:
+      message: "🌙 Nachtlicht aan: Woonkamer verlichting zacht aan."
+  - service: notify.email_backup
+    data:
+      message: "🌙 Nachtlicht aan: Woonkamer verlichting zacht aan."
+  - service: notify.signal_notify
+    data:
+      message: "🌙 Nachtlicht aan: Woonkamer verlichting zacht aan."
+mode: single
