@@ -1,0 +1,13 @@
+alias: Notify bij deur open
+description: Stuur bericht via Telegram en Email wanneer voordeur open gaat
+trigger:
+  platform: state
+  entity_id: binary_sensor.voordeur_contact
+  to: 'on'
+action:
+  - service: notify.telegram_primary
+    data:
+      message: "De voordeur is open!"
+  - service: notify.email_backup
+    data:
+      message: "De voordeur is open!"
