@@ -504,6 +504,7 @@ services:
       - TZ=Europe/Amsterdam
     depends_on:
       - mosquitto          # Voor MQTT integratie met Home Assistant
+      - homeassistant
 
   portainer:
     image: portainer/portainer-ce
