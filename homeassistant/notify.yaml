@@ -13,12 +13,13 @@ email_backup:
   platform: smtp
   server: smtp.gmail.com
   port: 587
-  sender: jouw.email@gmail.com
+  sender: henrydenhengst@gmail.com
   encryption: starttls
-  username: jouw.email@gmail.com
+  username: henrydenhengst@gmail.com
   password: !secret email_password
   recipient:
-    - ontvanger1@gmail.com
+    - henrydenhengst@gmail.com
+    - ilonadenhengst@gmail.com
 
 # =====================
 # Signal notificatie (Extra)
