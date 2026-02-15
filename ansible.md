@@ -1,4 +1,4 @@
-# 🏠 Home Assistant Homelab – Complete Cheatsheet
+# 🏠 Home Assistant Homelab – Complete Cheatsheet voor Ansible Stack
 
 Alle commando’s die je nodig hebt om je Home Assistant stack lokaal of remote via Ansible te beheren. Inclusief pre-flight checks, Docker Compose beheer, backups en logs.
 
