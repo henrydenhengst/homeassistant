@@ -191,6 +191,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - [Beszel](https://github.com/henrygd/beszel) – Real-time monitoring dashboard  
 - [Homepage](https://github.com/gethomepage/homepage) – Startpagina/dashboard  
 - [IT-Tools](https://github.com/corentinth/it-tools) – Diagnostics & monitoring  
+- [Node-RED](https://github.com/node-red/node-red) – Flow-based automation en integratie tool
 
 ---
 
