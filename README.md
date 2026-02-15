@@ -193,6 +193,12 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - [IT-Tools](https://github.com/corentinth/it-tools) – Diagnostics & monitoring  
 - [Node-RED](https://github.com/node-red/node-red) – Flow-based automation en integratie tool
 - [Dozzle](https://github.com/amir20/dozzle) – Real-time Docker log viewer via webinterface
+- [InfluxDB](https://github.com/influxdata/influxdb) – Time-series database voor metrics en monitoring  
+- [Grafana](https://github.com/grafana/grafana) – Visualisatie dashboards voor metrics en logs  
+- [BLE2MQTT](https://github.com/devbis/ble2mqtt) – Bluetooth Low Energy devices koppelen aan MQTT  
+- [MQTT-IR / Beszel Hub](https://github.com/beszel/beszel) – MQTT en IR integratie / hub functionaliteit  
+- [P1 Monitor](https://github.com/P1Monitor/p1monitor) – Energieverbruik monitoring via slimme meter (P1 poort)  
+- [CrowdSec](https://github.com/crowdsecurity/crowdsec) – Collaborative security en intrusion prevention
 
 ---
 
