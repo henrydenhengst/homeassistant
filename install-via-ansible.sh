@@ -101,9 +101,6 @@ STACK_DIR="$HOME/home-assistant"
 PRECHECK_PLAYBOOK="$STACK_DIR/ha-preflight.yml"
 LOG_FILE="$STACK_DIR/ha-preflight.log"
 
-mkdir -p "$STACK_DIR"
-exec > >(tee -a "$LOG_FILE") 2>&1
-
 echo "===================================================="
 echo "START HA PRE-FLIGHT CHECK $(date)"
 echo "Logbestand: $LOG_FILE"
