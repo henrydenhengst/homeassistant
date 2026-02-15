@@ -43,3 +43,9 @@ backups/
 .DS_Store
 *.swp
 *.tmp
+
+
+.vscode/
+.idea/
+__pycache__/
+*.pyc
