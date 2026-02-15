@@ -1,16 +1,16 @@
 # =====================
 # Telegram notificatie (Primary)
 # =====================
-- platform: telegram
-  name: telegram_primary
+telegram_primary:
+  platform: telegram
   api_key: !secret telegram_token
-  chat_id: 8255991553
+  chat_id: 8255991553   # alleen nummer, geen @ of quotes nodig
 
 # =====================
 # Email notificatie (Backup)
 # =====================
-- platform: smtp
-  name: email_backup
+email_backup:
+  platform: smtp
   server: smtp.gmail.com
   port: 587
   sender: jouw.email@gmail.com
@@ -23,8 +23,8 @@
 # =====================
 # Signal notificatie (Extra)
 # =====================
-- platform: rest
-  name: signal_notify
+signal_notify:
+  platform: rest
   resource: "https://api.signal.org/v1/messages"
   method: POST
   headers:
