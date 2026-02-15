@@ -571,6 +571,15 @@ services:
     volumes:
       - ./crowdsec:/etc/crowdsec
 
+  gotify:
+    image: gotify/server:2.0
+    container_name: gotify
+    restart: unless-stopped
+    ports:
+      - "8137:80"       # Externe poort 8137 → interne Gotify poort 80
+    volumes:
+      - ./data:/app/data
+
   duckdns:
     image: linuxserver/duckdns
     container_name: duckdns
