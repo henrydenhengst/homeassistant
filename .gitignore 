@@ -70,3 +70,8 @@ backups/
 .idea/
 __pycache__/
 *.pyc
+
+# -------------------------------
+# Home Assistant 
+# -------------------------------
+secrets.yaml
