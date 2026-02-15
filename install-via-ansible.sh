@@ -48,17 +48,25 @@
  =====================================================
 # HA INSTALLATIE SCRIPT MET VOORAFGEGAANDE ANSIBLE PRE-FLIGHT
 # =====================================================
-
-
 set -e
 set -o pipefail
 
 # -----------------------------------------------------
-# Variabelen log & stack directory
+# Variabelen
 # -----------------------------------------------------
 STACK_DIR="$HOME/home-assistant"
 LOG_FILE="$STACK_DIR/ha-ansible-full.log"
+PRECHECK_PLAYBOOK="$STACK_DIR/ha-preflight.yml"
 
+HA_STACK_DIR="$STACK_DIR"
+INVENTORY_FILE="$HA_STACK_DIR/inventory.yml"
+PLAYBOOK_FILE="$HA_STACK_DIR/deploy-ha.yml"
+DOCKER_COMPOSE_TEMPLATE="$HA_STACK_DIR/docker-compose.yml.j2"
+
+# Pas hier je DuckDNS en TZ aan
+TZ="Europe/Amsterdam"
+DUCKDNS_TOKEN="YOUR_TOKEN_HERE"
+DUCKDNS_SUBDOMAIN="myhome"
 
 # -------------------------------
 # Log redirectie meteen starten
@@ -66,16 +74,17 @@ LOG_FILE="$STACK_DIR/ha-ansible-full.log"
 mkdir -p "$STACK_DIR"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-# ======================
-# Controleer en installeer extra tools voor hardware checks
-# ======================
+echo "===================================================="
+echo "START HA PRE-FLIGHT CHECK $(date)"
+echo "Logbestand: $LOG_FILE"
+echo "===================================================="
 
+# -----------------------------------------------------
+# Controleer pre-flight tools
+# -----------------------------------------------------
 TOOLS=(memtester stress-ng smartctl lm-sensors)
 MISSING=()
 
-# -------------------------------
-# Check of tools aanwezig zijn
-# -------------------------------
 for TOOL in "${TOOLS[@]}"; do
     if ! command -v "$TOOL" &> /dev/null; then
         MISSING+=("$TOOL")
@@ -84,12 +93,8 @@ for TOOL in "${TOOLS[@]}"; do
     fi
 done
 
-# -------------------------------
-# Installeer ontbrekende tools
-# -------------------------------
 if [ ${#MISSING[@]} -ne 0 ]; then
     echo "⚠️  Ontbrekende tools: ${MISSING[*]}"
-    echo "📦 Installeren via apt-get..."
     apt-get update -y
     apt-get install -y "${MISSING[@]}"
     echo "✅ Ontbrekende tools geïnstalleerd: ${MISSING[*]}"
@@ -97,29 +102,16 @@ else
     echo "✅ Alle benodigde tools zijn aanwezig"
 fi
 
-STACK_DIR="$HOME/home-assistant"
-PRECHECK_PLAYBOOK="$STACK_DIR/ha-preflight.yml"
-LOG_FILE="$STACK_DIR/ha-preflight.log"
-
-echo "===================================================="
-echo "START HA PRE-FLIGHT CHECK $(date)"
-echo "Logbestand: $LOG_FILE"
-echo "===================================================="
-
-# -------------------------------
-# 1️⃣ Controleer ha-preflight.yml
-# -------------------------------
+# -----------------------------------------------------
+# Pre-flight checks
+# -----------------------------------------------------
 if [ ! -f "$PRECHECK_PLAYBOOK" ]; then
     echo "❌ ha-preflight.yml ontbreekt in $STACK_DIR"
-    echo "Maak dit bestand aan voordat je doorgaat."
     exit 1
 else
     echo "✅ ha-preflight.yml gevonden"
 fi
 
-# -------------------------------
-# 2️⃣ Controleer DuckDNS variabelen
-# -------------------------------
 if [[ "$DUCKDNS_TOKEN" == "YOUR_TOKEN_HERE" ]] || [[ -z "$DUCKDNS_TOKEN" ]]; then
     echo "❌ DUCKDNS_TOKEN niet ingesteld!"
     exit 1
@@ -130,9 +122,7 @@ if [[ "$DUCKDNS_SUBDOMAIN" == "myhome" ]] || [[ -z "$DUCKDNS_SUBDOMAIN" ]]; then
 fi
 echo "✅ DUCKDNS variabelen zijn ingesteld"
 
-# -------------------------------
-# 3️⃣ Controleer devices
-# -------------------------------
+# Devices check
 DEVICES=(/dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyACM0)
 for DEV in "${DEVICES[@]}"; do
     if [ -e "$DEV" ]; then
@@ -142,22 +132,8 @@ for DEV in "${DEVICES[@]}"; do
     fi
 done
 
-# -------------------------------
-# 4️⃣ Controleer extra tools
-# -------------------------------
-TOOLS=(memtester stress-ng smartctl lm-sensors)
-for TOOL in "${TOOLS[@]}"; do
-    if command -v $TOOL &> /dev/null; then
-        echo "✅ Tool geïnstalleerd: $TOOL"
-    else
-        echo "⚠️  Tool ontbreekt: $TOOL"
-    fi
-done
-
-# -------------------------------
-# 5️⃣ Optioneel: korte hardware checks
-# -------------------------------
-echo "📌 Optionele hardware checks (SMART, CPU, RAM)..."
+# Optionele hardware checks
+echo "📌 Korte hardware checks (SMART, CPU, RAM)..."
 if command -v smartctl &> /dev/null; then
     for d in $(lsblk -dno NAME | grep -vE "loop|boot|sr"); do
         echo "💾 $d SMART status:"
@@ -175,7 +151,8 @@ fi
 
 echo "===================================================="
 echo "✅ HA PRE-FLIGHT CHECKS VOLTOOID"
-# -----------------------------------------------------
+
+
 # Stap 2: Hier start je de bestaande installatie
 # -----------------------------------------------------
 echo "🚀 Start Home Assistant stack installatie..."
