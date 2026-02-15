@@ -1,7 +1,21 @@
+# =====================================================
+# HOMELAB PROJECT - GITIGNORE
+# =====================================================
+# Dit bestand zorgt ervoor dat gevoelige informatie,
+# logs, tijdelijke bestanden en persistent Docker data
+# niet in de Git-repo terechtkomen.
+# =====================================================
+
+# -------------------------------
 # Environment variables
+# -------------------------------
+# Bevat gevoelige configuratie zoals wachtwoorden, tokens, en DuckDNS settings
 .env
 
-# Docker persistent volumes / configs
+# -------------------------------
+# Docker persistent volumes / container configs
+# -------------------------------
+# Houdt lokale configuraties en data buiten Git
 homeassistant/
 mosquitto/
 zigbee2mqtt/
@@ -23,28 +37,35 @@ crowdsec/
 dozzle/
 watchtower/
 
-
-# WireGuard keys
+# -------------------------------
+# WireGuard / VPN keys
+# -------------------------------
+# Bevat private keys en configuraties, nooit in Git
 /etc/wireguard/*.key
 /etc/wireguard/*.conf
 
+# SSL / TLS / secrets
 *.pem
 *.key
 *.crt
 *.secret
 
-# Logs
+# -------------------------------
+# Logs & backups
+# -------------------------------
+# Wordt continu gegenereerd door containers / scripts
+*.log
 *.bak
 *.old
-*.log
 backups/
 
-# OS / editor files
+# -------------------------------
+# OS / editor / IDE bestanden
+# -------------------------------
+# MacOS, swapfiles, temp, IDE configs
 .DS_Store
 *.swp
 *.tmp
-
-
 .vscode/
 .idea/
 __pycache__/
