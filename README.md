@@ -140,7 +140,10 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - Dynamische DNS voor externe toegang.
 - Integreert met Home Assistant en andere webbased apps.
 
-
+### Gotify
+- Zelf-gehoste push notificatieservice.
+- Wordt gebruikt voor realtime alerts van Home Assistant of andere services.
+- REST API integratie, eenvoudig te configureren met secrets.
 
 ## Notifications
 
