@@ -4,7 +4,7 @@
 - platform: telegram
   name: telegram_primary
   api_key: !secret telegram_token
-  chat_id: "@jouw_telegram_gebruikersnaam"
+  chat_id: "@8255991553"
 
 # =====================
 # Email notificatie (Backup)
