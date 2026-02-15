@@ -293,7 +293,10 @@ mkdir -p "$STACK_DIR" "$BACKUP_DIR" \
          "$STACK_DIR/it-tools" \
          "$STACK_DIR/crowdsec" \
          "$STACK_DIR/duckdns" \
-         "$STACK_DIR/gotify"  # <-- Nieuwe map voor Gotify data
+         "$STACK_DIR/gotify" \
+         "$STACK_DIR/appdaemon" \
+         "$STACK_DIR/appdaemon/config" \
+         "$STACK_DIR/appdaemon/apps"
 
 if [ $? -eq 0 ]; then
     echo "✅ Directories succesvol aangemaakt."
