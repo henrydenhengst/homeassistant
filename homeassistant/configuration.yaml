@@ -1,43 +1,28 @@
-# configuration.yaml
-homeassistant:
-  name: Home
-  latitude: 52.123
-  longitude: 4.123
-  elevation: 1
-  unit_system: metric
-  currency: EUR
-  time_zone: Europe/Amsterdam
-  external_url: "https://home.example.com"
-
-# jouw notify setup
+# --- Notifiers ---
 notify:
-  - name: telegram_primary
-    platform: telegram
-    api_key: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-    chat_id: "987654321"
-  - name: email_backup
-    platform: smtp
-    server: smtp.gmail.com
-    port: 587
-    sender: "homelab@example.com"
-    encryption: starttls
-    username: "homelab@example.com"
-    password: "your-email-password"
-    recipient:
-      - "mijnemail@example.com"
-  - name: signal_backup
-    platform: rest
-    resource: http://localhost:8080/v1/messages
-    method: POST
-    headers:
-      Authorization: "Bearer your-signal-api-token"
-    message_param_name: "message"
-    data:
-      recipients:
-        - "+31612345678"
+  # Primary: Telegram
   - name: primary_notify
-    platform: group
-    services:
-      - service: notify.telegram_primary
-      - service: notify.email_backup
-      - service: notify.signal_backup
+    platform: telegram
+    api_key: !secret telegram_token
+    chat_id: 123456789   # je chat_id
+
+  # Backup: Email
+  - name: backup_notify
+    platform: smtp
+    server: smtp.gmail.com  # voorbeeld Gmail SMTP
+    port: 587
+    sender: jouw.email@gmail.com
+    encryption: starttls
+    username: jouw.email@gmail.com
+    password: !secret email_password
+    recipient:
+      - jouw.email@gmail.com
+
+# Optional: Signal later
+#  - name: signal_notify
+#    platform: rest
+#    resource: 'https://api.signal.org/v1/messages'
+#    method: POST
+#    headers:
+#      Authorization: "Bearer !secret signal_token"
+#    message_param_name: message
