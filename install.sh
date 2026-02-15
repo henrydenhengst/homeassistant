@@ -326,6 +326,8 @@ declare -A ICONS=(
     ["crowdsec.png"]="https://raw.githubusercontent.com/crowdsecurity/crowdsec/main/docs/images/crowdsec.png"
     ["duckdns.png"]="https://www.duckdns.org/assets/duckdns-icon.png"
     ["p1monitor.png"]="https://raw.githubusercontent.com/nielstron/p1monitor/main/public/logo.png"
+
+["appdaemon.png"]="https://raw.githubusercontent.com/acockburn/appdaemon/master/docs/_static/appdaemon_logo.png"
     ["gotify.png"]="https://gotify.net/static/img/logo-192.png"  # <-- Gotify icoon toegevoegd
 )
 
