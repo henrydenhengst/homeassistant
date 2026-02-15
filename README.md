@@ -140,6 +140,28 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - Dynamische DNS voor externe toegang.
 - Integreert met Home Assistant en andere webbased apps.
 
+
+
+## 🔹 Notifications
+
+- **Telegram**: primaire notificaties
+- **Email**: backup notificaties
+- **Gotify**: extra push notificaties
+
+Voorbeeld configuratie in `configuration.yaml`:
+
+```yaml
+gotify_notify:
+  platform: rest
+  name: gotify
+  resource: "http://${JUST_IP}:8137/message"
+  method: POST
+  headers:
+    Content-Type: "application/json"
+  payload: '{"title": "{{ title }}", "message": "{{ message }}", "priority": 5, "token": "{{ token }}"}'
+
+
+
 ---
 
 ## Hardware Detectie
