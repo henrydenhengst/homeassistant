@@ -1,0 +1,156 @@
+---
+- name: HA Pre-flight Checks & Host Hardening (verplicht)
+  hosts: all
+  become: true
+  vars:
+    stack_dir: "{{ ha_stack_dir | default('/home/{{ ansible_user }}/home-assistant') }}"
+    docker_compose_file: "{{ stack_dir }}/docker-compose.yml"
+    required_ram_mb: 4000
+    required_disk_gb: 15
+
+  tasks:
+
+    - name: Check available disk space
+      shell: df / | tail -1 | awk '{print int($4/1024/1024)}'
+      register: free_disk
+    - name: Fail if disk space is too low
+      fail:
+        msg: "❌ Onvoldoende schijfruimte: {{ free_disk.stdout }} GB, minimaal {{ required_disk_gb }} GB vereist"
+      when: free_disk.stdout|int < required_disk_gb
+
+    - name: Check total RAM
+      shell: free -m | awk '/Mem:/ {print $2}'
+      register: total_ram
+    - name: Fail if RAM is too low
+      fail:
+        msg: "❌ Onvoldoende RAM: {{ total_ram.stdout }} MB, minimaal {{ required_ram_mb }} MB vereist"
+      when: total_ram.stdout|int < required_ram_mb
+
+    - name: Install extra system tools
+      apt:
+        name:
+          - ufw
+          - fail2ban
+          - memtester
+          - lm-sensors
+          - auditd
+          - stress-ng
+          - curl
+          - jq
+        state: present
+        update_cache: yes
+
+    - name: Ensure backup directory exists
+      file:
+        path: "{{ stack_dir }}/backups"
+        state: directory
+        mode: '0755'
+
+    - name: Check SMART status of disks
+      shell: |
+        PROBLEMS=0
+        for d in $(lsblk -dno NAME | grep -vE "loop|boot|sr"); do
+          DEV="/dev/$d"
+          if command -v smartctl &>/dev/null; then
+            STATUS=$(smartctl -H $DEV 2>/dev/null | awk -F': ' '/overall-health/ {print $2}')
+            STATUS=${STATUS:-UNKNOWN}
+            if [[ "$STATUS" != "PASSED" && "$STATUS" != "OK" && "$STATUS" != "UNKNOWN" ]]; then
+              echo "❌ $DEV SMART status failed: $STATUS"
+              PROBLEMS=$((PROBLEMS+1))
+            fi
+          fi
+        done
+        exit $PROBLEMS
+      register: smart_check
+      ignore_errors: true
+
+    - name: Fail if SMART errors detected
+      fail:
+        msg: "❌ SMART fouten gedetecteerd op 1 of meer schijven"
+      when: smart_check.rc != 0
+
+    - name: Optional RAM test (memtester)
+      shell: |
+        TOTAL_RAM=$(free -m | awk '/Mem:/ {print $2}')
+        TEST_MB=$(( TOTAL_RAM / 4 ))
+        (( TEST_MB > 8192 )) && TEST_MB=8192
+        memtester "${TEST_MB}M" 1
+      ignore_errors: true
+      register: memtest_result
+
+    - name: Fail if memtester reports errors
+      fail:
+        msg: "❌ Geheugenfouten gedetecteerd door memtester"
+      when: memtest_result.rc != 0
+
+    - name: CPU stress short test
+      shell: stress-ng --cpu $(nproc) -t 15s --quiet
+      register: cpu_stress
+      ignore_errors: true
+
+    - name: Fail if CPU test fails
+      fail:
+        msg: "❌ CPU niet stabiel onder stress-test"
+      when: cpu_stress.rc != 0
+
+    - name: Check devices exist (/dev/ttyUSB0, /dev/ttyUSB1, /dev/ttyACM0)
+      stat:
+        path: "{{ item }}"
+      loop:
+        - /dev/ttyUSB0
+        - /dev/ttyUSB1
+        - /dev/ttyACM0
+      register: device_check
+
+    - name: Fail if required devices are missing
+      fail:
+        msg: "❌ Vereist device ontbreekt: {{ item.item }}"
+      loop: "{{ device_check.results }}"
+      when: not item.stat.exists
+
+    - name: Configure UFW firewall
+      ufw:
+        state: enabled
+        policy: deny
+    - name: Allow SSH and HA stack ports
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - 22
+        - 8120:8140
+
+    - name: Disable SSH root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: restart ssh
+
+    - name: Configure Fail2Ban
+      copy:
+        dest: /etc/fail2ban/jail.d/ssh.local
+        content: |
+          [sshd]
+          enabled = true
+          maxretry = 3
+          bantime = 3600
+          findtime = 600
+      notify: restart fail2ban
+
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+  handlers:
+    - name: restart ssh
+      service:
+        name: ssh
+        state: restarted
+    - name: restart fail2ban
+      service:
+        name: fail2ban
+        state: restarted
+        enabled: true
