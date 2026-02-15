@@ -51,6 +51,17 @@
 set -e
 set -o pipefail
 
+
+# Laad configuratie uit .env
+if [ -f "$HOME/.env" ]; then
+    export $(grep -v '^#' "$HOME/.env" | xargs)
+    echo "✅ .env geladen"
+else
+    echo "❌ .env bestand niet gevonden in $HOME/.env"
+    exit 1
+fi
+
+
 # -----------------------------------------------------
 # Variabelen
 # -----------------------------------------------------
