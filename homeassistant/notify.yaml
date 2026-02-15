@@ -22,12 +22,13 @@ email_backup:
     - ilonadenhengst@gmail.com
 
 # =====================
-# Signal notificatie (Extra)
+# Gotify notificatie (Extra)
 # =====================
-signal_notify:
+gotify_notify:
   platform: rest
-  resource: "https://api.signal.org/v1/messages"
+  name: gotify
+  resource: "http://<SERVER_IP>:8137/message"
   method: POST
   headers:
-    Authorization: "Bearer !secret signal_token"
     Content-Type: "application/json"
+  payload: '{"title": "{{ title }}", "message": "{{ message }}", "priority": 5, "token": "{{ token }}"}'
