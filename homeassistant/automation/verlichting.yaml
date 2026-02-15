@@ -1,1 +1,26 @@
-verlichting automations
+alias: "Verlichting Woonkamer bij Beweging"
+description: "Zet de woonkamer verlichting aan bij beweging en stuur notificatie"
+trigger:
+  - platform: state
+    entity_id: binary_sensor.woonkamer_beweging
+    to: 'on'
+condition:
+  - condition: sun
+    after: sunset
+    before: sunrise
+action:
+  - service: light.turn_on
+    target:
+      entity_id: light.woonkamer_plafond
+    data:
+      brightness_pct: 80
+  - service: notify.telegram_primary
+    data:
+      message: "💡 Beweging gedetecteerd: Woonkamer verlichting aan."
+  - service: notify.email_backup
+    data:
+      message: "💡 Beweging gedetecteerd: Woonkamer verlichting aan."
+  - service: notify.signal_notify
+    data:
+      message: "💡 Beweging gedetecteerd: Woonkamer verlichting aan."
+mode: single
