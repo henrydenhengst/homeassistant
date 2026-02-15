@@ -225,6 +225,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 | 8134   | CrowdSec               | Security & threat monitoring                          |
 | 8135   | IT-Tools               | Diagnostics & monitoring tools                        |
 | 8136   | Node-RED               | Flow editor voor automatiseringen via MQTT/API       |
+| 8137   | Gotify                 |Push notificaties via REST API                |
 | --     | Watchtower             | Automatische container updates                        |
 | --     | Beszel Agent           | Metric agent van de host                               |
 | --     | DuckDNS                | Dynamische DNS update service                          |
