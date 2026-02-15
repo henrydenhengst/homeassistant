@@ -370,3 +370,41 @@ ansible-playbook -i "$INVENTORY_FILE" "$PLAYBOOK_FILE"
 echo "===================================================="
 echo "✅ HA Ansible Stack deployment voltooid!"
 echo "===================================================="
+
+# -----------------------------------------------------
+# Instructies en mogelijkheden
+# -----------------------------------------------------
+cat <<EOF
+
+====================================================
+📌 Home Assistant Ansible Stack - Mogelijkheden
+====================================================
+
+1️⃣ Lokaal draaien:
+   - Inventory bevat een 'local' host.
+   - Het script installeert Docker en Ansible, genereert de stack en start containers lokaal.
+
+2️⃣ Remote deployment:
+   - Voeg servers toe in inventory.yml met 'ansible_host' en 'ansible_user'.
+   - SSH-toegang (key of password) moet werken.
+   - Run het script of ansible-playbook -i inventory.yml deploy-ha.yml
+   - Alle taken: Docker install, directories maken, stack deployen, containers starten.
+
+3️⃣ Variabelen aanpassen:
+   - TZ: Timezone voor alle containers (standaard: $TZ)
+   - DUCKDNS_TOKEN: token voor DuckDNS
+   - DUCKDNS_SUBDOMAIN: subdomain voor DuckDNS
+   - HA_STACK_DIR: pad waar de stack wordt aangemaakt
+
+4️⃣ Opties:
+   - Containers starten/updaten: docker compose -f \$HA_STACK_DIR/docker-compose.yml up -d
+   - Stack status controleren: docker ps
+   - Logs bekijken: tail -f $LOG_FILE
+
+5️⃣ Logs:
+   - Alle installatie- en deployment-logs worden opgeslagen in: $LOG_FILE
+
+✅ Zo kun je de volledige Home Assistant stack lokaal of op meerdere Debian 13 servers beheren via Ansible.
+====================================================
+
+EOF
