@@ -1,62 +1,52 @@
-## RAM controleren
-`free -h
+# 🏠 Home Assistant Homelab – Complete Cheatsheet
 
-## CPU info
-`lscpu
+Alle commando’s die je nodig hebt om je Home Assistant stack lokaal of remote via Ansible te beheren. Inclusief pre-flight checks, Docker Compose beheer, backups en logs.
 
-## SMART status van schijven
-`sudo smartctl -H /dev/sda
+---
 
-## Korte CPU stress-test (5s)
-`stress-ng --cpu 1 -t 5s --quiet
+## 1️⃣ Pre-flight & systeemchecks
 
-## USB-devices detecteren
-`ls /dev/ttyUSB* /dev/ttyACM* /dev/hci*
+Controleer dat je server klaar is voor installatie:
 
-## Pre-flight playbook uitvoeren
-`ansible-playbook -i inventory.yml ha-preflight.yml
+```bash
+# RAM controleren
+free -h
 
-## Full Home Assistant stack deployen
-```ansible-playbook -i inventory.yml
-```deploy-ha.yml
+# CPU info
+lscpu
 
-## Alleen een bepaalde host targetten
-`ansible-playbook -i inventory.yml
-`deploy-ha.yml --limit server1
+# SMART status van schijven
+sudo smartctl -H /dev/sda
 
-## Ping alle hosts in inventory
-`ansible all -i inventory.yml -m ping
+# Korte CPU stress-test (5s)
+stress-ng --cpu 1 -t 5s --quiet
 
-## Ansible facts ophalen van een host
-`ansible server1 -i inventory.yml -m setup
+# USB-devices detecteren
+ls /dev/ttyUSB* /dev/ttyACM* /dev/hci*
 
-## Start alle containers (detached)
-`docker compose -f ~/home-assistant/
-`docker-compose.yml up -d
+# Pre-flight playbook uitvoeren
+ansible-playbook -i inventory.yml ha-preflight.yml
 
-## Stop alle containers
-`docker compose -f ~/home-assistant/
-`docker-compose.yml down
+# Full Home Assistant stack deployen
+ansible-playbook -i inventory.yml deploy-ha.yml
 
-## Herstart 1 container
-`docker restart homeassistant
+# Alleen een bepaalde host targetten
+ansible-playbook -i inventory.yml deploy-ha.yml --limit server1
 
-## Logs realtime volgen van 1 container
-`docker logs -f homeassistant
+# Ping alle hosts in inventory
+ansible all -i inventory.yml -m ping
 
-## Logs van alle containers bekijken
-```docker compose -f ~/home-assistant/
-```docker-compose.yml logs -f
+# Ansible facts ophalen van een host
+ansible server1 -i inventory.yml -m setup
 
-## Container status controleren
-`docker ps
+# Start alle containers (detached)
+docker compose -f ~/home-assistant/docker-compose.yml up -d
 
-## Controleer netwerk en volumes
-`docker network ls
-`docker volume ls
+# Stop alle containers
+docker compose -f ~/home-assistant/docker-compose.yml down
 
-## Backup config mappen
-`tar -czvf ha-backup-$(date +%F).tar.gz \
+# Backup config mappen
+tar -czvf ha-backup-$(date +%F).tar.gz \
   ~/home-assistant/homeassistant \
   ~/home-assistant/mosquitto \
   ~/home-assistant/zigbee2mqtt \
@@ -68,48 +58,47 @@
   ~/home-assistant/homepage/config
 
 # Restore backup
-```tar -xzvf ha-backup-YYYY-MM-DD.tar.gz -C ~/home-assistant/
+tar -xzvf ha-backup-YYYY-MM-DD.tar.gz -C ~/home-assistant/
 
 # Variabelen laden in shell
-```export $(grep -v '^#' ~/.env | xargs)
+export $(grep -v '^#' ~/.env | xargs)
 
 # Controleer variabelen
-```echo $DUCKDNS_SUB
-```echo $DUCKDNS_TOKEN
-```echo $MYSQL_PASSWORD
+echo $DUCKDNS_SUB
+echo $DUCKDNS_TOKEN
+echo $MYSQL_PASSWORD
 
 # Pull laatste images en herstart containers
-```docker compose -f ~/home-assistant/
-```docker-compose.yml pull
-```docker compose -f ~/home-assistant/
-```docker-compose.yml up -d
+docker compose -f ~/home-assistant/docker-compose.yml pull
+docker compose -f ~/home-assistant/docker-compose.yml up -d
 
-# Watchtower doet automatisch dagelijkse updates:
-```docker logs -f watchtower
+# Watchtower doet automatisch dagelijkse updates
+docker logs -f watchtower
 
 # Home Assistant logs
-```docker logs -f homeassistant
+docker logs -f homeassistant
 
 # MQTT logs
-```docker logs -f mosquitto
+docker logs -f mosquitto
 
 # Zigbee2MQTT logs
-```docker logs -f zigbee2mqtt
+docker logs -f zigbee2mqtt
 
 # Node-RED logs
-```docker logs -f nodered
+docker logs -f nodered
+# Herstart 1 container
+docker restart homeassistant
 
-# Voeg server toe in inventory.yml:
-# server3:
-#   ansible_host: 192.168.1.30
-#   ansible_user: debian
+# Logs realtime volgen van 1 container
+docker logs -f homeassistant
 
-# Deployment via SSH
-```ansible-playbook -i inventory.yml
-```deploy-ha.yml --limit server3
+# Logs van alle containers bekijken
+docker compose -f ~/home-assistant/docker-compose.yml logs -f
 
-# Ping remote server
-```ansible server3 -i inventory.yml -m ping
+# Container status controleren
+docker ps
 
-
+# Controleer netwerk en volumes
+docker network ls
+docker volume ls
 
