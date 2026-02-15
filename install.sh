@@ -715,6 +715,7 @@ declare -A SERVICES=(
     ["Uptime Kuma"]="8132"
     ["IT-Tools"]="8135"
     ["CrowdSec"]="8134"
+    ["Gotify"]="8137"
     ["DuckDNS"]="--"
 )
 
