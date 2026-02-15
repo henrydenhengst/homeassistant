@@ -10,6 +10,7 @@
 ![Dashboard](1771065902347.png)
 
 ## Inhoudsopgave
+## Inhoudsopgave
 - [Overzicht](#overzicht)
 - [Functies](#supporting-services-in-het-script)
   - [Home Assistant](#home-assistant)
@@ -24,15 +25,17 @@
   - [Mosquitto (MQTT)](#mosquitto-mqtt)
   - [MariaDB](#mariadb)
   - [DuckDNS](#duckdns)
+  - [Gotify](#gotify)
+- [Notifications](#notifications)
 - [Hardware Detectie](#hardware-detectie)
 - [Netwerk Hardening](#netwerk-hardening)
 - [Backup & Data Management](#backup--data-management)
 - [Opmerkingen](#opmerkingen)
-- [Additional services](#additional-services)
+- [Additional Services](#additional-services)
 - [Aanbevolen GitHub Repositories](#aanbevolen-github-repositories)
 - [Services & Poorten Overzicht](#services--poorten-overzicht)
 - [Roadmap](#roadmap)
-- [Mermaid Diagram](#flowchart)
+- [FlowChart / Mermaid Diagram](#flowchart)
 
 ---
 
