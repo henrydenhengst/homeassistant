@@ -1,62 +1,62 @@
-# RAM controleren
+## RAM controleren
 `free -h
 
-# CPU info
-```lscpu
+## CPU info
+`lscpu
 
-# SMART status van schijven
-```sudo smartctl -H /dev/sda
+## SMART status van schijven
+`sudo smartctl -H /dev/sda
 
-# Korte CPU stress-test (5s)
-```stress-ng --cpu 1 -t 5s --quiet
+## Korte CPU stress-test (5s)
+`stress-ng --cpu 1 -t 5s --quiet
 
-# USB-devices detecteren
-```ls /dev/ttyUSB* /dev/ttyACM* /dev/hci*
+## USB-devices detecteren
+`ls /dev/ttyUSB* /dev/ttyACM* /dev/hci*
 
-# Pre-flight playbook uitvoeren
-```ansible-playbook -i inventory.yml ha-preflight.yml
+## Pre-flight playbook uitvoeren
+`ansible-playbook -i inventory.yml ha-preflight.yml
 
-# Full Home Assistant stack deployen
+## Full Home Assistant stack deployen
 ```ansible-playbook -i inventory.yml
 ```deploy-ha.yml
 
-# Alleen een bepaalde host targetten
-```ansible-playbook -i inventory.yml
-```deploy-ha.yml --limit server1
+## Alleen een bepaalde host targetten
+`ansible-playbook -i inventory.yml
+`deploy-ha.yml --limit server1
 
-# Ping alle hosts in inventory
-```ansible all -i inventory.yml -m ping
+## Ping alle hosts in inventory
+`ansible all -i inventory.yml -m ping
 
-# Ansible facts ophalen van een host
-```ansible server1 -i inventory.yml -m setup
+## Ansible facts ophalen van een host
+`ansible server1 -i inventory.yml -m setup
 
-# Start alle containers (detached)
-```docker compose -f ~/home-assistant/
-```docker-compose.yml up -d
+## Start alle containers (detached)
+`docker compose -f ~/home-assistant/
+`docker-compose.yml up -d
 
-# Stop alle containers
-```docker compose -f ~/home-assistant/
-```docker-compose.yml down
+## Stop alle containers
+`docker compose -f ~/home-assistant/
+`docker-compose.yml down
 
-# Herstart 1 container
-```docker restart homeassistant
+## Herstart 1 container
+`docker restart homeassistant
 
-# Logs realtime volgen van 1 container
-```docker logs -f homeassistant
+## Logs realtime volgen van 1 container
+`docker logs -f homeassistant
 
-# Logs van alle containers bekijken
+## Logs van alle containers bekijken
 ```docker compose -f ~/home-assistant/
 ```docker-compose.yml logs -f
 
-# Container status controleren
-```docker ps
+## Container status controleren
+`docker ps
 
-# Controleer netwerk en volumes
-```docker network ls
-```docker volume ls
+## Controleer netwerk en volumes
+`docker network ls
+`docker volume ls
 
-# Backup config mappen
-```tar -czvf ha-backup-$(date +%F).tar.gz \
+## Backup config mappen
+`tar -czvf ha-backup-$(date +%F).tar.gz \
   ~/home-assistant/homeassistant \
   ~/home-assistant/mosquitto \
   ~/home-assistant/zigbee2mqtt \
