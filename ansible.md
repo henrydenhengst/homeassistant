@@ -1,5 +1,5 @@
 # RAM controleren
-```free -h
+`free -h
 
 # CPU info
 ```lscpu
