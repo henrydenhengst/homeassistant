@@ -28,6 +28,11 @@ watchtower/
 /etc/wireguard/*.key
 /etc/wireguard/*.conf
 
+*.pem
+*.key
+*.crt
+*.secret
+
 # Logs
 *.log
 backups/
