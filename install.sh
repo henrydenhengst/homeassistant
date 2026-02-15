@@ -272,6 +272,7 @@ docker --version
 # =====================================================
 # Directories
 # =====================================================
+echo "📂 Aanmaken van stack- en backup directories..."
 mkdir -p "$STACK_DIR" "$BACKUP_DIR" \
          "$STACK_DIR/homeassistant" \
          "$STACK_DIR/zigbee2mqtt" \
@@ -291,9 +292,18 @@ mkdir -p "$STACK_DIR" "$BACKUP_DIR" \
          "$STACK_DIR/uptime-kuma" \
          "$STACK_DIR/it-tools" \
          "$STACK_DIR/crowdsec" \
-         "$STACK_DIR/duckdns"
+         "$STACK_DIR/duckdns" \
+         "$STACK_DIR/gotify"  # <-- Nieuwe map voor Gotify data
 
+if [ $? -eq 0 ]; then
+    echo "✅ Directories succesvol aangemaakt."
+else
+    echo "⚠️ Fout bij aanmaken van directories!"
+fi
 
+# =====================================================
+# Iconen voor Homepage downloaden
+# =====================================================
 echo "📥 Iconen voor Homepage ophalen..."
 declare -A ICONS=(
     ["home-assistant.png"]="https://raw.githubusercontent.com/home-assistant/brands/main/home-assistant/home-assistant.png"
@@ -313,12 +323,20 @@ declare -A ICONS=(
     ["crowdsec.png"]="https://raw.githubusercontent.com/crowdsecurity/crowdsec/main/docs/images/crowdsec.png"
     ["duckdns.png"]="https://www.duckdns.org/assets/duckdns-icon.png"
     ["p1monitor.png"]="https://raw.githubusercontent.com/nielstron/p1monitor/main/public/logo.png"
+    ["gotify.png"]="https://gotify.net/static/img/logo-192.png"  # <-- Gotify icoon toegevoegd
 )
 
 for ICON in "${!ICONS[@]}"; do
     URL=${ICONS[$ICON]}
-    curl -sSL "$URL" -o "$STACK_DIR/homepage/config/$ICON" || echo "⚠️ Fout bij downloaden van $ICON"
+    echo "⬇️ Downloaden van $ICON..."
+    if curl -sSL "$URL" -o "$STACK_DIR/homepage/config/$ICON"; then
+        echo "✅ $ICON gedownload"
+    else
+        echo "⚠️ Fout bij downloaden van $ICON"
+    fi
 done
+
+echo "🎉 Alle iconen verwerkt in $STACK_DIR/homepage/config/"
 
 
 
