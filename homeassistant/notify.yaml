@@ -27,7 +27,7 @@ email_backup:
 gotify_notify:
   platform: rest
   name: gotify
-  resource: "http://<SERVER_IP>:8137/message"
+  resource: "http://${JUST_IP}:8137/message"
   method: POST
   headers:
     Content-Type: "application/json"
