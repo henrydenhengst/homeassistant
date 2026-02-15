@@ -14,6 +14,15 @@ influxdb/
 grafana/
 uptime-kuma/
 it-tools/
+esphome/
+nodered_data/
+beszel_data/
+homepage/config/
+portainer_data/
+crowdsec/
+dozzle/
+watchtower/
+
 
 # WireGuard keys
 /etc/wireguard/*.key
