@@ -71,7 +71,7 @@ Dit logbestand helpt bij het analyseren en oplossen van het probleem.
 
 ---
 
-## 🔹 Home Assistant Apparatuur
+## Home Assistant Apparatuur
 Voor een volledig overzicht van alle apparaten die je kunt integreren met Home Assistant, zie [apparatuur.md](./apparatuur.md).
 
 > Tip: bevat veelvoorkomende apparaten, vergeten apparaten en Bluetooth (BLE) apparaten met integratie tips.
