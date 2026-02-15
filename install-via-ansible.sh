@@ -45,12 +45,49 @@
 # Gebruik:
 #   sudo ./ha_ansible_full.sh
 # =====================================================
+ =====================================================
+# HA INSTALLATIE SCRIPT MET VOORAFGEGAANDE ANSIBLE PRE-FLIGHT
+# =====================================================
 
 set -e
 set -o pipefail
 
-LOG_FILE="$HOME/ha-ansible-full.log"
+STACK_DIR="$HOME/home-assistant"
+INVENTORY_FILE="$STACK_DIR/inventory.yml"
+PRECHECK_PLAYBOOK="$STACK_DIR/ha-preflight.yml"
+LOG_FILE="$STACK_DIR/ha-install.log"
+
+mkdir -p "$STACK_DIR"
 exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "===================================================="
+echo "START INSTALLATIE $(date)"
+echo "Logbestand: $LOG_FILE"
+echo "===================================================="
+
+# -----------------------------------------------------
+# Stap 1: Voer Ansible pre-flight checks uit
+# -----------------------------------------------------
+if [ ! -f "$PRECHECK_PLAYBOOK" ]; then
+    echo "❌ Ansible pre-flight playbook niet gevonden: $PRECHECK_PLAYBOOK"
+    echo "Maak eerst ha-preflight.yml aan in $STACK_DIR"
+    exit 1
+fi
+
+echo "📌 Voer pre-flight checks uit met Ansible..."
+ansible-playbook -i "$INVENTORY_FILE" "$PRECHECK_PLAYBOOK"
+if [ $? -ne 0 ]; then
+    echo "❌ Pre-flight checks zijn mislukt! Installatie wordt gestopt."
+    exit 1
+fi
+echo "✅ Pre-flight checks geslaagd!"
+
+# -----------------------------------------------------
+# Stap 2: Hier start je de bestaande installatie
+# -----------------------------------------------------
+echo "🚀 Start Home Assistant stack installatie..."
+# Je bestaande installatie-code hieronder, bv. Docker installatie, directories, compose, etc.
+
 
 echo "===================================================="
 echo "START FULL HA ANSIBLE STACK DEPLOYMENT $(date)"
