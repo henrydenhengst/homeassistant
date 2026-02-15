@@ -24,6 +24,9 @@ stress-ng --cpu 1 -t 5s --quiet
 # USB-devices detecteren
 ls /dev/ttyUSB* /dev/ttyACM* /dev/hci*
 
+
+## 2️⃣ Variabelen en .env
+
 # Pre-flight playbook uitvoeren
 ansible-playbook -i inventory.yml ha-preflight.yml
 
