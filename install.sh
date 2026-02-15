@@ -599,6 +599,23 @@ services:
     volumes:
       - ./data:/app/data
 
+  appdaemon:
+    image: acockburn/appdaemon:latest
+    container_name: appdaemon
+    restart: unless-stopped
+    depends_on:
+      - homeassistant  # Zorgt dat HA container eerst start
+    environment:
+    # Gebruik .env variabelen voor veilige configuratie
+      - HA_URL=http://${JUST_IP}:8123    # Home Assistant URL (API poort 8123)
+      - TOKEN=${APPDAEMON_TOKEN}         # Home Assistant Long-Lived Access Token
+      - DASH_URL=http://0.0.0.0:5050     # HADashboard URL (optioneel)
+    volumes:
+      - ./appdaemon:/conf                # appdaemon.yaml en configuratie
+      - ./apps:/conf/apps                # Python apps/automatiseringen
+    ports:
+      - "8138:5050"                      # Externe poort 8138 → interne HADashboard 5050
+
   duckdns:
     image: linuxserver/duckdns
     container_name: duckdns
