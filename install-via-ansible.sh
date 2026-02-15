@@ -53,6 +53,13 @@
 set -e
 set -o pipefail
 
+# -----------------------------------------------------
+# Variabelen log & stack directory
+# -----------------------------------------------------
+STACK_DIR="$HOME/home-assistant"
+LOG_FILE="$STACK_DIR/ha-ansible-full.log"
+
+
 # -------------------------------
 # Log redirectie meteen starten
 # -------------------------------
