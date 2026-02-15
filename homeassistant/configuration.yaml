@@ -1,1 +1,5 @@
-automation: !include_dir_merge_list automation/
+# Load automations from folder
+automation: !include_dir_list automations/
+
+# Load notifications
+notify: !include notify.yaml
