@@ -1,10 +1,14 @@
-# Telegram notificatie
+# =====================
+# Telegram notificatie (Primary)
+# =====================
 - platform: telegram
   name: telegram_primary
   api_key: !secret telegram_token
   chat_id: "@jouw_telegram_gebruikersnaam"
 
-# Email notificatie (backup)
+# =====================
+# Email notificatie (Backup)
+# =====================
 - platform: smtp
   name: email_backup
   server: smtp.gmail.com
@@ -15,3 +19,14 @@
   password: !secret email_password
   recipient:
     - ontvanger1@gmail.com
+
+# =====================
+# Signal notificatie (Extra)
+# =====================
+- platform: rest
+  name: signal_notify
+  resource: "https://api.signal.org/v1/messages"
+  method: POST
+  headers:
+    Authorization: "Bearer !secret signal_token"
+    Content-Type: "application/json"
