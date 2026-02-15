@@ -199,6 +199,8 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - [MQTT-IR / Beszel Hub](https://github.com/beszel/beszel) – MQTT en IR integratie / hub functionaliteit  
 - [P1 Monitor](https://github.com/P1Monitor/p1monitor) – Energieverbruik monitoring via slimme meter (P1 poort)  
 - [CrowdSec](https://github.com/crowdsecurity/crowdsec) – Collaborative security en intrusion prevention
+- [Watchtower](https://github.com/containrrr/watchtower) – Automatische Docker container updates  
+- [DuckDNS](https://github.com/linuxserver/docker-duckdns) – Dynamic DNS voor thuisservers en homelabs
 
 ---
 
