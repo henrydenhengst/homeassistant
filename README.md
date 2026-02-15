@@ -142,7 +142,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 
 
 
-## 🔹 Notifications
+## Notifications
 
 - **Telegram**: primaire notificaties
 - **Email**: backup notificaties
