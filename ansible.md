@@ -4,10 +4,6 @@ Alle commando’s die je nodig hebt om je Home Assistant stack lokaal of remote 
 
 ---
 
-## 1️⃣ Pre-flight & systeemchecks
-
-Controleer dat je server klaar is voor installatie:
-
 ```bash
 # RAM controleren
 free -h
@@ -23,9 +19,6 @@ stress-ng --cpu 1 -t 5s --quiet
 
 # USB-devices detecteren
 ls /dev/ttyUSB* /dev/ttyACM* /dev/hci*
-
-
-## 2️⃣ Variabelen en .env
 
 # Pre-flight playbook uitvoeren
 ansible-playbook -i inventory.yml ha-preflight.yml
