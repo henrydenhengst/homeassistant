@@ -53,6 +53,37 @@
 set -e
 set -o pipefail
 
+# ======================
+# Controleer en installeer extra tools voor hardware checks
+# ======================
+
+TOOLS=(memtester stress-ng smartctl lm-sensors)
+MISSING=()
+
+# -------------------------------
+# Check of tools aanwezig zijn
+# -------------------------------
+for TOOL in "${TOOLS[@]}"; do
+    if ! command -v "$TOOL" &> /dev/null; then
+        MISSING+=("$TOOL")
+    else
+        echo "✅ Tool geïnstalleerd: $TOOL"
+    fi
+done
+
+# -------------------------------
+# Installeer ontbrekende tools
+# -------------------------------
+if [ ${#MISSING[@]} -ne 0 ]; then
+    echo "⚠️  Ontbrekende tools: ${MISSING[*]}"
+    echo "📦 Installeren via apt-get..."
+    apt-get update -y
+    apt-get install -y "${MISSING[@]}"
+    echo "✅ Ontbrekende tools geïnstalleerd: ${MISSING[*]}"
+else
+    echo "✅ Alle benodigde tools zijn aanwezig"
+fi
+
 STACK_DIR="$HOME/home-assistant"
 PRECHECK_PLAYBOOK="$STACK_DIR/ha-preflight.yml"
 LOG_FILE="$STACK_DIR/ha-preflight.log"
