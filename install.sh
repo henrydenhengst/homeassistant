@@ -728,7 +728,7 @@ declare -A SERVICES=(
     ["Zigbee2MQTT"]="8121"
     ["Z-Wave JS"]="8129"
     ["ESPHome"]="8122"
-    ["Node-RED"]="2136"          # ✅ Node-RED toegevoegd
+    ["Node-RED"]="2136"
     ["Portainer"]="8124"
     ["Watchtower"]="--"
     ["Dozzle"]="8126"
@@ -740,6 +740,7 @@ declare -A SERVICES=(
     ["CrowdSec"]="8134"
     ["Gotify"]="8137"
     ["DuckDNS"]="--"
+    ["AppDaemon"]="8138"
 )
 
 for name in "${!SERVICES[@]}"; do
