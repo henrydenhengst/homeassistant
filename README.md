@@ -2,9 +2,10 @@
 
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 ![Debian](https://img.shields.io/badge/Debian-13-red)
-<!-- ![Status](https://img.shields.io/badge/Status-Stable-green) -->
 ![Status](https://img.shields.io/badge/Status-Beta-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
+
+<!-- ![Status](https://img.shields.io/badge/Status-Stable-green) -->
 
 ![Dashboard](1771065902347.png)
 
