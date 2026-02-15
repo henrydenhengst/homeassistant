@@ -178,7 +178,7 @@ Voor een volledig overzicht van alle apparaten die je kunt integreren met Home A
 - **Dozzle** → Real-time container logs  
 - **IT-Tools** → Diagnostics & utilities  
 - **DuckDNS** → External access / dynamic DNS
-
+- **Gotify** → Push notificaties van Home Assistant of andere services
 ---
 
 ## Aanbevolen GitHub Repositories
