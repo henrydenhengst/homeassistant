@@ -1,32 +1,11 @@
-
 #!/bin/bash
 # =====================================================
-# FULL HOME ASSISTANT ANSIBLE STACK INSTALLER
+# FULL HOME ASSISTANT ANSIBLE STACK INSTALLER (COMPLETE)
 # =====================================================
-# Auteur: Henry den Hengst 
+# Auteur: Henry den Hengst (aangepast)
 # Doel: Volledige Home Assistant homelab stack deployen
-#       met alle benodigde containers en Ansible.
-#
-# Wat dit script doet:
-# 1. Installeert basis dependencies en tools op Debian 13:
-#    - Docker, docker-compose
-#    - Ansible (met Python3 en pip)
-#    - Git, curl, sudo
-#
-# 2. Maakt directories aan voor alle containers:
-#    - homeassistant, MariaDB, Mosquitto, Zigbee2MQTT, Z-Wave JS,
-#      BLE2MQTT, RFXtrx, MQTT-IR, P1Monitor, ESPHome, Node-RED,
-#      Portainer, Watchtower, Dozzle, InfluxDB, Grafana, Beszel Hub+Agent,
-#      Homepage, Uptime-Kuma, IT-Tools, CrowdSec, DuckDNS
-#
-# 3. Genereert een docker-compose Jinja2-template voor de volledige stack.
-#
-# 4. Genereert een Ansible playbook:
-#    - Deployt de docker-compose template
-#    - Start alle containers
-#    - Controleert containerstatus
-#
-# 5. Voert het playbook direct uit.
+#       met Ansible en Docker Compose, volledig parametriseerbaar via .env
+#       inclusief automatische USB detectie
 #
 # Mogelijkheden:
 # - Lokaal draaien via 'local' inventory entry
@@ -45,25 +24,25 @@
 # Gebruik:
 #   sudo ./ha_ansible_full.sh
 # =====================================================
- =====================================================
-# HA INSTALLATIE SCRIPT MET VOORAFGEGAANDE ANSIBLE PRE-FLIGHT
-# =====================================================
 set -e
 set -o pipefail
 
-
+# -----------------------------------------------------
 # Laad configuratie uit .env
+# -----------------------------------------------------
+set -a  # auto-export alle variabelen
 if [ -f "$HOME/.env" ]; then
-    export $(grep -v '^#' "$HOME/.env" | xargs)
+    source "$HOME/.env"
     echo "✅ .env geladen"
 else
     echo "❌ .env bestand niet gevonden in $HOME/.env"
     exit 1
 fi
-
+set +a
+chmod 600 "$HOME/.env"
 
 # -----------------------------------------------------
-# Variabelen
+# Basis variabelen
 # -----------------------------------------------------
 STACK_DIR="$HOME/home-assistant"
 LOG_FILE="$STACK_DIR/ha-ansible-full.log"
@@ -74,13 +53,17 @@ INVENTORY_FILE="$HA_STACK_DIR/inventory.yml"
 PLAYBOOK_FILE="$HA_STACK_DIR/deploy-ha.yml"
 DOCKER_COMPOSE_TEMPLATE="$HA_STACK_DIR/docker-compose.yml.j2"
 
-# Pas hier je DuckDNS en TZ aan
-TZ="Europe/Amsterdam"
-DUCKDNS_TOKEN="YOUR_TOKEN_HERE"
-DUCKDNS_SUBDOMAIN="myhome"
+# USB variabelen
+ZIGBEE_USB="${ZIGBEE_USB:-}"
+ZWAVE_USB="${ZWAVE_USB:-}"
+BLE_USB="${BLE_USB:-}"
+RF_USB="${RF_USB:-}"
+IR_USB="${IR_USB:-}"
+P1_USB="${P1_USB:-}"
+BT_USB="${BT_USB:-}"
 
 # -------------------------------
-# Log redirectie meteen starten
+# Log redirectie starten
 # -------------------------------
 mkdir -p "$STACK_DIR"
 exec > >(tee -a "$LOG_FILE") 2>&1
@@ -123,23 +106,43 @@ else
     echo "✅ ha-preflight.yml gevonden"
 fi
 
-if [[ "$DUCKDNS_TOKEN" == "YOUR_TOKEN_HERE" ]] || [[ -z "$DUCKDNS_TOKEN" ]]; then
+if [[ -z "$DUCKDNS_TOKEN" ]]; then
     echo "❌ DUCKDNS_TOKEN niet ingesteld!"
     exit 1
 fi
-if [[ "$DUCKDNS_SUBDOMAIN" == "myhome" ]] || [[ -z "$DUCKDNS_SUBDOMAIN" ]]; then
-    echo "❌ DUCKDNS_SUBDOMAIN niet aangepast!"
+if [[ -z "$DUCKDNS_SUB" ]]; then
+    echo "❌ DUCKDNS_SUB niet ingesteld!"
     exit 1
 fi
-echo "✅ DUCKDNS variabelen zijn ingesteld"
+echo "✅ DuckDNS variabelen ingesteld"
 
-# Devices check
-DEVICES=(/dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyACM0)
-for DEV in "${DEVICES[@]}"; do
-    if [ -e "$DEV" ]; then
-        echo "✅ Device aanwezig: $DEV"
+# -----------------------------------------------------
+# Dynamische USB detectie
+# -----------------------------------------------------
+echo "📌 Start dynamische USB detectie..."
+USB_MAP=(
+    "ZIGBEE_USB"
+    "ZWAVE_USB"
+    "BLE_USB"
+    "RF_USB"
+    "IR_USB"
+    "P1_USB"
+    "BT_USB"
+)
+
+for USB_VAR in "${USB_MAP[@]}"; do
+    DEV_PATH="${!USB_VAR}"
+    if [ -z "$DEV_PATH" ] || [ ! -e "$DEV_PATH" ]; then
+        FOUND=$(ls /dev/ttyUSB* 2>/dev/null | head -n1 || ls /dev/ttyACM* 2>/dev/null | head -n1 || ls /dev/hci* 2>/dev/null | head -n1)
+        if [ -n "$FOUND" ]; then
+            export $USB_VAR="$FOUND"
+            echo "🔧 $USB_VAR automatisch ingesteld op $FOUND"
+        else
+            echo "⚠️  Geen geschikt device gevonden voor $USB_VAR"
+            export $USB_VAR=""
+        fi
     else
-        echo "⚠️  Device NIET gevonden: $DEV"
+        echo "✅ Device aanwezig: $USB_VAR ($DEV_PATH)"
     fi
 done
 
@@ -163,30 +166,6 @@ fi
 echo "===================================================="
 echo "✅ HA PRE-FLIGHT CHECKS VOLTOOID"
 
-
-# Stap 2: Hier start je de bestaande installatie
-# -----------------------------------------------------
-echo "🚀 Start Home Assistant stack installatie..."
-# Je bestaande installatie-code hieronder, bv. Docker installatie, directories, compose, etc.
-
-
-echo "===================================================="
-echo "START FULL HA ANSIBLE STACK DEPLOYMENT $(date)"
-echo "Logbestand: $LOG_FILE"
-echo "===================================================="
-
-# -----------------------------------------------------
-# Variabelen
-# -----------------------------------------------------
-HA_STACK_DIR="$HOME/home-assistant"
-INVENTORY_FILE="$HA_STACK_DIR/inventory.yml"
-PLAYBOOK_FILE="$HA_STACK_DIR/deploy-ha.yml"
-DOCKER_COMPOSE_TEMPLATE="$HA_STACK_DIR/docker-compose.yml.j2"
-
-TZ="Europe/Amsterdam"
-DUCKDNS_TOKEN="YOUR_TOKEN_HERE"  # Pas aan
-DUCKDNS_SUBDOMAIN="myhome"       # Pas aan
-
 # -----------------------------------------------------
 # Installatie basis tools en Ansible
 # -----------------------------------------------------
@@ -196,7 +175,6 @@ apt update && apt install -y \
 
 pip3 install --upgrade pip
 pip3 install ansible jinja2
-
 echo "✅ Ansible en Docker geïnstalleerd"
 
 # -----------------------------------------------------
@@ -213,19 +191,26 @@ all:
   hosts:
     local:
       ansible_connection: local
-    server1:
-      ansible_host: 192.168.1.20
-      ansible_user: debian
-    server2:
-      ansible_host: 192.168.1.21
-      ansible_user: debian
   vars:
-    ha_stack_dir: $HA_STACK_DIR
-    tz: $TZ
-    duckdns_token: $DUCKDNS_TOKEN
-    duckdns_subdomain: $DUCKDNS_SUBDOMAIN
+    ha_stack_dir: "$HA_STACK_DIR"
+    tz: "$HA_TZ"
+    duckdns_token: "$DUCKDNS_TOKEN"
+    duckdns_subdomain: "$DUCKDNS_SUB"
+    mysql_root_password: "$MYSQL_ROOT_PASSWORD"
+    mysql_user: "$MYSQL_USER"
+    mysql_password: "$MYSQL_PASSWORD"
+    mysql_database: "$MYSQL_DATABASE"
+    mqtt_user: "$MQTT_USER"
+    mqtt_password: "$MQTT_PASSWORD"
+    zigbee_usb: "$ZIGBEE_USB"
+    zwave_usb: "$ZWAVE_USB"
+    ble_usb: "$BLE_USB"
+    rf_usb: "$RF_USB"
+    ir_usb: "$IR_USB"
+    p1_usb: "$P1_USB"
+    bt_usb: "$BT_USB"
+    portainer_volume: "$PORTAINER_VOLUME"
 EOF
-
 echo "✅ Inventory aangemaakt op $INVENTORY_FILE"
 
 # -----------------------------------------------------
@@ -255,10 +240,10 @@ services:
     container_name: mariadb
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: homeassistant
-      MYSQL_USER: homeassistant
-      MYSQL_PASSWORD: secretpassword
+      MYSQL_ROOT_PASSWORD: {{ mysql_root_password }}
+      MYSQL_DATABASE: {{ mysql_database }}
+      MYSQL_USER: {{ mysql_user }}
+      MYSQL_PASSWORD: {{ mysql_password }}
     volumes:
       - ./mariadb:/var/lib/mysql
 
@@ -268,6 +253,9 @@ services:
     restart: unless-stopped
     ports:
       - "8120:1883"
+    environment:
+      - MQTT_USER={{ mqtt_user }}
+      - MQTT_PASSWORD={{ mqtt_password }}
     volumes:
       - ./mosquitto:/mosquitto
 
@@ -280,7 +268,7 @@ services:
     volumes:
       - ./zigbee2mqtt:/app/data
     devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
+      - "{{ zigbee_usb }}:{{ zigbee_usb }}"
     environment:
       - TZ={{ tz }}
     depends_on:
@@ -295,7 +283,7 @@ services:
     volumes:
       - ./zwavejs2mqtt:/usr/src/app/store
     devices:
-      - /dev/ttyUSB1:/dev/ttyUSB0
+      - "{{ zwave_usb }}:/dev/ttyUSB0"
     environment:
       - TZ={{ tz }}
 
@@ -306,7 +294,7 @@ services:
     ports:
       - "8122:8080"
     devices:
-      - /dev/ttyACM0:/dev/ttyACM0
+      - "{{ ble_usb }}:/dev/ttyACM0"
     environment:
       - TZ={{ tz }}
 
@@ -317,7 +305,7 @@ services:
     ports:
       - "8130:8080"
     devices:
-      - /dev/ttyUSB2:/dev/ttyUSB2
+      - "{{ rf_usb }}:/dev/ttyUSB2"
     environment:
       - TZ={{ tz }}
 
@@ -334,6 +322,8 @@ services:
     restart: unless-stopped
     ports:
       - "8137:80"
+    devices:
+      - "{{ p1_usb }}:/dev/ttyUSB4"
 
   esphome:
     image: ghcr.io/esphome/esphome
@@ -366,7 +356,7 @@ services:
       - "8125:9443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
+      - {{ portainer_volume }}:/data
 
   watchtower:
     image: containrrr/watchtower
@@ -469,15 +459,15 @@ services:
       - TOKEN={{ duckdns_token }}
 
 volumes:
-  portainer_data:
+  {{ portainer_volume }}:
 EOF
 
 echo "✅ Docker Compose template aangemaakt met alle containers"
 
 # -----------------------------------------------------
-# Playbook genereren
+# Ansible Playbook genereren
 # -----------------------------------------------------
-cat > "$PLAYBOOK_FILE" <<EOF
+cat > "$PLAYBOOK_FILE" <<'EOF'
 ---
 - name: Deploy Full Home Assistant Stack via Docker Compose
   hosts: all
@@ -487,7 +477,6 @@ cat > "$PLAYBOOK_FILE" <<EOF
     docker_compose_file: "{{ ha_stack_dir }}/docker-compose.yml"
 
   tasks:
-
     - name: Installeer vereiste tools
       apt:
         name:
@@ -532,12 +521,8 @@ echo "✅ Ansible playbook aangemaakt"
 echo "🚀 Playbook uitvoeren..."
 ansible-playbook -i "$INVENTORY_FILE" "$PLAYBOOK_FILE"
 
-echo "===================================================="
-echo "✅ HA Ansible Stack deployment voltooid!"
-echo "===================================================="
-
 # -----------------------------------------------------
-# Instructies en mogelijkheden
+# Documentatie & instructies
 # -----------------------------------------------------
 cat <<EOF
 
@@ -556,9 +541,9 @@ cat <<EOF
    - Alle taken: Docker install, directories maken, stack deployen, containers starten.
 
 3️⃣ Variabelen aanpassen:
-   - TZ: Timezone voor alle containers (standaard: $TZ)
+   - TZ: Timezone voor alle containers (standaard: $HA_TZ)
    - DUCKDNS_TOKEN: token voor DuckDNS
-   - DUCKDNS_SUBDOMAIN: subdomain voor DuckDNS
+   - DUCKDNS_SUB: subdomain voor DuckDNS
    - HA_STACK_DIR: pad waar de stack wordt aangemaakt
 
 4️⃣ Opties:
@@ -566,7 +551,17 @@ cat <<EOF
    - Stack status controleren: docker ps
    - Logs bekijken: tail -f $LOG_FILE
 
-5️⃣ Logs:
+5️⃣ USB Devices:
+   - Dynamisch gedetecteerd als variabelen leeg zijn
+   - Zigbee: $ZIGBEE_USB
+   - Z-Wave: $ZWAVE_USB
+   - BLE: $BLE_USB
+   - RF: $RF_USB
+   - IR: $IR_USB
+   - P1: $P1_USB
+   - BT: $BT_USB
+
+6️⃣ Logs:
    - Alle installatie- en deployment-logs worden opgeslagen in: $LOG_FILE
 
 ✅ Zo kun je de volledige Home Assistant stack lokaal of op meerdere Debian 13 servers beheren via Ansible.
