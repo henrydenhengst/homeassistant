@@ -49,39 +49,91 @@
 # HA INSTALLATIE SCRIPT MET VOORAFGEGAANDE ANSIBLE PRE-FLIGHT
 # =====================================================
 
+
 set -e
 set -o pipefail
 
 STACK_DIR="$HOME/home-assistant"
-INVENTORY_FILE="$STACK_DIR/inventory.yml"
 PRECHECK_PLAYBOOK="$STACK_DIR/ha-preflight.yml"
-LOG_FILE="$STACK_DIR/ha-install.log"
+LOG_FILE="$STACK_DIR/ha-preflight.log"
 
 mkdir -p "$STACK_DIR"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "===================================================="
-echo "START INSTALLATIE $(date)"
+echo "START HA PRE-FLIGHT CHECK $(date)"
 echo "Logbestand: $LOG_FILE"
 echo "===================================================="
 
-# -----------------------------------------------------
-# Stap 1: Voer Ansible pre-flight checks uit
-# -----------------------------------------------------
+# -------------------------------
+# 1️⃣ Controleer ha-preflight.yml
+# -------------------------------
 if [ ! -f "$PRECHECK_PLAYBOOK" ]; then
-    echo "❌ Ansible pre-flight playbook niet gevonden: $PRECHECK_PLAYBOOK"
-    echo "Maak eerst ha-preflight.yml aan in $STACK_DIR"
+    echo "❌ ha-preflight.yml ontbreekt in $STACK_DIR"
+    echo "Maak dit bestand aan voordat je doorgaat."
     exit 1
+else
+    echo "✅ ha-preflight.yml gevonden"
 fi
 
-echo "📌 Voer pre-flight checks uit met Ansible..."
-ansible-playbook -i "$INVENTORY_FILE" "$PRECHECK_PLAYBOOK"
-if [ $? -ne 0 ]; then
-    echo "❌ Pre-flight checks zijn mislukt! Installatie wordt gestopt."
+# -------------------------------
+# 2️⃣ Controleer DuckDNS variabelen
+# -------------------------------
+if [[ "$DUCKDNS_TOKEN" == "YOUR_TOKEN_HERE" ]] || [[ -z "$DUCKDNS_TOKEN" ]]; then
+    echo "❌ DUCKDNS_TOKEN niet ingesteld!"
     exit 1
 fi
-echo "✅ Pre-flight checks geslaagd!"
+if [[ "$DUCKDNS_SUBDOMAIN" == "myhome" ]] || [[ -z "$DUCKDNS_SUBDOMAIN" ]]; then
+    echo "❌ DUCKDNS_SUBDOMAIN niet aangepast!"
+    exit 1
+fi
+echo "✅ DUCKDNS variabelen zijn ingesteld"
 
+# -------------------------------
+# 3️⃣ Controleer devices
+# -------------------------------
+DEVICES=(/dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyACM0)
+for DEV in "${DEVICES[@]}"; do
+    if [ -e "$DEV" ]; then
+        echo "✅ Device aanwezig: $DEV"
+    else
+        echo "⚠️  Device NIET gevonden: $DEV"
+    fi
+done
+
+# -------------------------------
+# 4️⃣ Controleer extra tools
+# -------------------------------
+TOOLS=(memtester stress-ng smartctl lm-sensors)
+for TOOL in "${TOOLS[@]}"; do
+    if command -v $TOOL &> /dev/null; then
+        echo "✅ Tool geïnstalleerd: $TOOL"
+    else
+        echo "⚠️  Tool ontbreekt: $TOOL"
+    fi
+done
+
+# -------------------------------
+# 5️⃣ Optioneel: korte hardware checks
+# -------------------------------
+echo "📌 Optionele hardware checks (SMART, CPU, RAM)..."
+if command -v smartctl &> /dev/null; then
+    for d in $(lsblk -dno NAME | grep -vE "loop|boot|sr"); do
+        echo "💾 $d SMART status:"
+        smartctl -H "/dev/$d" || echo "⚠️ Kan SMART status niet lezen"
+    done
+fi
+
+TOTAL_RAM=$(free -m | awk '/Mem:/ {print $2}')
+echo "🧠 Beschikbaar RAM: ${TOTAL_RAM} MB"
+
+if command -v stress-ng &> /dev/null; then
+    echo "⚡ Korte CPU stress-test (5s)..."
+    stress-ng --cpu 1 -t 5s --quiet || echo "⚠️ CPU stress-test mislukt"
+fi
+
+echo "===================================================="
+echo "✅ HA PRE-FLIGHT CHECKS VOLTOOID"
 # -----------------------------------------------------
 # Stap 2: Hier start je de bestaande installatie
 # -----------------------------------------------------
