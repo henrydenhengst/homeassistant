@@ -1,1 +1,17 @@
-voordeur automations
+alias: "Voordeur Open Alert"
+description: "Stuur notificatie bij openen voordeur"
+trigger:
+  platform: state
+  entity_id: binary_sensor.voordeur_contact
+  to: 'on'
+action:
+  - service: notify.telegram_primary
+    data:
+      message: "⚠️ De voordeur is open!"
+  - service: notify.email_backup
+    data:
+      message: "⚠️ De voordeur is open!"
+  - service: notify.signal_notify
+    data:
+      message: "⚠️ De voordeur is open!"
+mode: single
