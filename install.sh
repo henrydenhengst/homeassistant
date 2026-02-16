@@ -77,11 +77,6 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 
-
-#!/bin/bash
-set -e
-set -o pipefail
-
 LOG_FILE="$HOME/hardware-check.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
@@ -851,3 +846,4 @@ else
 fi
 
 echo "🎉 Klaar"
+
