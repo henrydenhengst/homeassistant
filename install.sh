@@ -777,3 +777,77 @@ echo "Ga naar de Beszel Hub (poort 8131), kopieer je Public Key,"
 echo "plak deze in je .env (indien gewenst) en draai opnieuw:"
 echo "docker compose up -d"
 echo "===================================================="
+
+
+==================================================
+# tokens aanmaken voor AppDeamon en Node-RED 
+# ============================================
+
+
+
+echo "🔎 Controleren of Home Assistant draait..."
+
+if ! docker ps --format '{{.Names}}' | grep -qi homeassistant; then
+    echo "❌ Home Assistant draait niet"
+    exit 1
+fi
+
+echo "✅ Home Assistant draait"
+
+generate_token() {
+    openssl rand -hex 32
+}
+
+# ENV maken als die niet bestaat
+[ -f "$ENV_FILE" ] || touch "$ENV_FILE"
+
+update_env_var() {
+    local key=$1
+    local value=$2
+
+    if grep -q "^${key}=" "$ENV_FILE"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+    else
+        echo "${key}=${value}" >> "$ENV_FILE"
+    fi
+}
+
+TOKENS_UPDATED=false
+
+# Node-RED token
+NODE_RED_TOKEN=$(grep ^NODE_RED_TOKEN= "$ENV_FILE" | cut -d '=' -f2)
+
+if [ -z "$NODE_RED_TOKEN" ] || [ "$NODE_RED_TOKEN" = "auto" ]; then
+    NEW_TOKEN=$(generate_token)
+    update_env_var "NODE_RED_TOKEN" "$NEW_TOKEN"
+    echo "✅ Node-RED token aangemaakt"
+    TOKENS_UPDATED=true
+else
+    echo "ℹ️ Node-RED token bestaat al"
+fi
+
+# AppDaemon token
+APP_TOKEN=$(grep ^APPDAEMON_TOKEN= "$ENV_FILE" | cut -d '=' -f2)
+
+if [ -z "$APP_TOKEN" ] || [ "$APP_TOKEN" = "auto" ]; then
+    NEW_TOKEN=$(generate_token)
+    update_env_var "APPDAEMON_TOKEN" "$NEW_TOKEN"
+    echo "✅ AppDaemon token aangemaakt"
+    TOKENS_UPDATED=true
+else
+    echo "ℹ️ AppDaemon token bestaat al"
+fi
+
+# Restart alleen als tokens zijn aangepast
+if [ "$TOKENS_UPDATED" = true ]; then
+    echo "🔄 Tokens aangepast → containers herstarten..."
+
+    docker restart nodered 2>/dev/null || echo "⚠️ Node-RED container niet gevonden"
+    docker restart appdaemon 2>/dev/null || echo "⚠️ AppDaemon container niet gevonden"
+
+    echo "✅ Restart klaar"
+else
+    echo "ℹ️ Geen wijzigingen → geen restart nodig"
+fi
+
+echo "🎉 Klaar"
