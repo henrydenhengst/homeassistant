@@ -6,31 +6,32 @@ in
 
 {
   imports =
-    [ 
-      ./hardware-configuration.nix
-    ];
+    [ ./hardware-configuration.nix ];
 
   # -----------------------------
-  # Basis NixOS settings
+  # Basis instellingen
   # -----------------------------
   boot.loader.grub.device = "/dev/sda";
   networking.hostName = "homelab";
   time.timeZone = "Europe/Amsterdam";
+
   users.users.homelab = {
     isNormalUser = true;
     extraGroups = [ "docker" "network" ];
     password = "changeme"; # vervang door veilig wachtwoord
   };
 
+  security.wheelNeedsPassword = false;
+
   # -----------------------------
-  # Enable Docker
+  # Docker
   # -----------------------------
   services.docker.enable = true;
-  services.docker.extraOptions = "--iptables=false"; # optioneel
+  services.docker.extraOptions = "--iptables=false";
   virtualisation.docker-compose.enable = true;
 
   # -----------------------------
-  # USB, Bluetooth & Zigbee firmware
+  # Firmware voor Zigbee / Bluetooth / WiFi
   # -----------------------------
   environment.systemPackages = with pkgs; [
     firmware-linux
@@ -47,19 +48,13 @@ in
     ca-certificates
   ];
 
-  # -----------------------------
-  # Non-free firmware repository
-  # -----------------------------
+  # Non-free firmware toestaan
   nixpkgs.config.allowUnfree = true;
 
   # -----------------------------
   # Homelab folders
   # -----------------------------
-  environment.etc."homelab".source = homelabDir;
-  environment.etc."homelab".directoryMode = "0755";
-
   systemd.tmpfiles.rules = [
-    # maak homelab folder en subfolders aan
     "d /srv/homelab 0755 homelab homelab -"
     "d /srv/homelab/homeassistant 0755 homelab homelab -"
     "d /srv/homelab/mariadb 0755 homelab homelab -"
@@ -78,18 +73,13 @@ in
   ];
 
   # -----------------------------
-  # Enable system services
+  # SSH en firewall
   # -----------------------------
   services.openssh.enable = true;
   services.firewall.enable = true;
 
   # -----------------------------
-  # Optional: USB permissions
-  # -----------------------------
-  security.wheelNeedsPassword = false;
-
-  # -----------------------------
-  # Extra: Docker auto-start
+  # Docker auto-start (optioneel)
   # -----------------------------
   systemd.services.docker-wait = {
     description = "Start Docker after boot";
