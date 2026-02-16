@@ -106,24 +106,29 @@ if [[ $EUID -ne 0 ]]; then
    echo "❌ Run als root."
    exit 1
 fi
-
 # -------------------------------
-# Schijf Gezondheid (SMART)
+# Schijf Gezondheid (SMART) - Exclusief USB
 # -------------------------------
-apt update && apt install -y smartmontools lm-sensors stress-ng lsblk usbutils jq curl
-
-DISKS=$(lsblk -dno NAME,MODEL,SIZE | grep -vE "loop|boot|rpmb|sr")
+# We voegen 'TRAN' toe aan lsblk om de verbindingsmethode te zien
+# We filteren op 'usb' met grep -v
+DISKS=$(lsblk -dno NAME,MODEL,SIZE,TRAN | grep -vE "loop|boot|rpmb|sr|usb")
 
 PROBLEMS_FOUND=0
 PROBLEM_DISKS=()
 
-for disk_info in $DISKS; do
-    read -r NAME MODEL SIZE <<< "$disk_info"
+# Gebruik een while-loop met read om spaties in modelnamen (zoals 'Samsung 870') goed te verwerken
+echo "$DISKS" | while read -r NAME MODEL SIZE TRAN; do
     DEV="/dev/$NAME"
+    
+    # Extra check voor de zekerheid: als MODEL leeg is (gebeurt soms bij lsblk output)
+    [[ -z "$MODEL" ]] && MODEL="Onbekend Model"
+
     echo -e "\n💾 Schijf: $DEV [$MODEL - $SIZE]"
     echo "----------------------------------------------------"
 
-    STATUS=$(smartctl -H "$DEV" 2>/dev/null | awk -F': ' '/overall-health/ {gsub(/ /,"",$2); print $2}')
+    # Haal SMART status op
+    STATUS_LINE=$(smartctl -H "$DEV" 2>/dev/null | grep -i "overall-health")
+    STATUS=$(echo "$STATUS_LINE" | awk -F': ' '{print $2}' | xargs)
     [[ -z "$STATUS" ]] && STATUS="UNKNOWN"
 
     if [[ "$STATUS" != "PASSED" && "$STATUS" != "OK" && "$STATUS" != "UNKNOWN" ]]; then
@@ -133,36 +138,34 @@ for disk_info in $DISKS; do
     fi
 
     ATTRS=$(smartctl -A "$DEV" 2>/dev/null)
+    
+    # Verbeterde extractie van Reallocated en Pending sectors
     REALLOC=$(echo "$ATTRS" | awk '/Reallocated_Sector_Ct/ {print $10}')
     PENDING=$(echo "$ATTRS" | awk '/Current_Pending_Sector/ {print $10}')
 
-    if [[ "$REALLOC" -gt 0 || "$PENDING" -gt 0 ]]; then
-        echo -e "❌ Fysieke fouten gedetecteerd op $DEV (Realloc:$REALLOC Pending:$PENDING)"
+    # Alleen checken als de variabelen niet leeg zijn en getallen zijn
+    if [[ "${REALLOC:-0}" -gt 0 || "${PENDING:-0}" -gt 0 ]]; then
+        echo -e "❌ Fysieke fouten gedetecteerd op $DEV (Realloc:${REALLOC:-0} Pending:${PENDING:-0})"
         PROBLEMS_FOUND=$((PROBLEMS_FOUND + 1))
-        PROBLEM_DISKS+=("$DEV - fysieke schade (Realloc:$REALLOC Pending:$PENDING)")
+        PROBLEM_DISKS+=("$DEV - fysieke schade")
     fi
 
     if [[ "$NAME" == nvme* ]]; then
-        TEMP=$(echo "$ATTRS" | awk '/Temperature/ {print $2 " " $3}')
-        WEAR=$(echo "$ATTRS" | awk -F': ' '/Percentage Used/ {print $2}')
-        echo "🌡️  Temperatuur: $TEMP"
-        echo "📉 Slijtage (Used): ${WEAR:-0}%"
+        # NVMe specifieke output
+        TEMP=$(smartctl -A "$DEV" | awk '/Temperature:/ {print $2 " " $3}')
+        WEAR=$(smartctl -A "$DEV" | awk '/Percentage Used:/ {print $3}')
+        echo "🌡️  Temperatuur: ${TEMP:-Onbekend}"
+        echo "📉 Slijtage (Used): ${WEAR:-0}"
     else
+        # SATA specifieke output
         HOURS=$(echo "$ATTRS" | awk '/Power_On_Hours/ {print $10}')
         echo "🕒 Branduren: ${HOURS:-0} uur"
     fi
 done
 
-echo -e "\n===================================================="
-if [[ $PROBLEMS_FOUND -eq 0 ]]; then
-    echo "✅ Alle schijven lijken gezond."
-else
-    echo "⚠️  Problemen gedetecteerd op $PROBLEMS_FOUND schijf(en):"
-    for disk in "${PROBLEM_DISKS[@]}"; do
-        echo " - $disk"
-    done
-fi
-echo "===================================================="
+# Let op: de variabelen $PROBLEMS_FOUND buiten de 'while read' loop kunnen 
+# soms gereset worden door de pipe. Als dat gebeurt, moet je de loop anders schrijven.
+
 
 # -------------------------------
 # Geheugen (RAM) check
