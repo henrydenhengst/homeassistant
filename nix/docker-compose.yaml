@@ -6,9 +6,9 @@ networks:
 
 services:
 
-  # --------------------------
-  # Home Assistant
-  # --------------------------
+  # ---------------------------
+  # Home Assistant + AppDaemon
+  # ---------------------------
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
@@ -19,20 +19,35 @@ services:
     volumes:
       - ./homeassistant:/config
     devices:
-      - /dev/zigbee:/dev/zigbee
-      - /dev/bus/usb:/dev/bus/usb
-    environment:
-      HASS_DEVICE_AUTODETECT: "1"
-      TZ: ${TZ}
+      - /dev/ttyUSB0   # Zigbee
+      - /dev/ttyACM0   # Zigbee2MQTT
+      - /dev/ble0      # BLE dongle (pas aan)
     depends_on:
       - mariadb
       - mosquitto
     networks:
       - homelab_net
 
-  # --------------------------
-  # Mosquitto MQTT
-  # --------------------------
+  appdaemon:
+    image: acockburn/appdaemon:latest
+    container_name: appdaemon
+    restart: unless-stopped
+    ports:
+      - "${APPDAEMON_PORT}:5050"
+    volumes:
+      - ./appdaemon:/conf
+    environment:
+      - HA_URL=${HA_URL}
+      - HA_TOKEN=${HA_TOKEN}
+      - TZ=${TZ}
+    depends_on:
+      - homeassistant
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # MQTT & Database
+  # ---------------------------
   mosquitto:
     image: eclipse-mosquitto:2
     container_name: mosquitto
@@ -48,9 +63,6 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # MariaDB
-  # --------------------------
   mariadb:
     image: mariadb:11
     container_name: mariadb
@@ -61,9 +73,9 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
+  # ---------------------------
   # Node-RED
-  # --------------------------
+  # ---------------------------
   node-red:
     image: nodered/node-red:latest
     container_name: node-red
@@ -81,9 +93,9 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # InfluxDB
-  # --------------------------
+  # ---------------------------
+  # Grafana & InfluxDB
+  # ---------------------------
   influxdb:
     image: influxdb:2.7
     container_name: influxdb
@@ -95,9 +107,6 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # Grafana
-  # --------------------------
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -114,9 +123,9 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # Uptime-Kuma
-  # --------------------------
+  # ---------------------------
+  # Monitoring & management
+  # ---------------------------
   uptime-kuma:
     image: louislam/uptime-kuma:1
     container_name: uptime-kuma
@@ -128,39 +137,6 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # DuckDNS
-  # --------------------------
-  duckdns:
-    image: linuxserver/duckdns
-    container_name: duckdns
-    restart: unless-stopped
-    env_file: .env
-    volumes:
-      - ./duckdns:/config
-    networks:
-      - homelab_net
-
-  # --------------------------
-  # Gotify
-  # --------------------------
-  gotify:
-    image: gotify/server:2.0
-    container_name: gotify
-    restart: unless-stopped
-    ports:
-      - "${GOTIFY_PORT}:8080"
-    environment:
-      - GOTIFY_ADMIN_USER=${GOTIFY_ADMIN_USER}
-      - GOTIFY_ADMIN_PASSWORD=${GOTIFY_ADMIN_PASSWORD}
-    volumes:
-      - ./gotify:/app/data
-    networks:
-      - homelab_net
-
-  # --------------------------
-  # Portainer
-  # --------------------------
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
@@ -177,9 +153,6 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # Dozzle
-  # --------------------------
   dozzle:
     image: amir20/dozzle:latest
     container_name: dozzle
@@ -191,9 +164,9 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # Homepage
-  # --------------------------
+  # ---------------------------
+  # Web services
+  # ---------------------------
   homepage:
     image: your/homepage-image
     container_name: homepage
@@ -208,9 +181,6 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # Beszel
-  # --------------------------
   beszel:
     image: your/beszel-image
     container_name: beszel
@@ -225,22 +195,81 @@ services:
     networks:
       - homelab_net
 
-  # --------------------------
-  # AppDaemon
-  # --------------------------
-  appdaemon:
-    image: acockburn/appdaemon:latest
-    container_name: appdaemon
+  # ---------------------------
+  # DuckDNS & Gotify
+  # ---------------------------
+  duckdns:
+    image: linuxserver/duckdns
+    container_name: duckdns
     restart: unless-stopped
-    ports:
-      - "${APPDAEMON_PORT}:5050"
+    env_file: .env
     volumes:
-      - ./appdaemon:/conf
-    environment:
-      - HA_URL=${HA_URL}
-      - HA_TOKEN=${HA_TOKEN}
-      - TZ=${TZ}
-    depends_on:
-      - homeassistant
+      - ./duckdns:/config
     networks:
       - homelab_net
+
+  gotify:
+    image: gotify/server:2.0
+    container_name: gotify
+    restart: unless-stopped
+    ports:
+      - "${GOTIFY_PORT}:8080"
+    environment:
+      - GOTIFY_ADMIN_USER=${GOTIFY_ADMIN_USER}
+      - GOTIFY_ADMIN_PASSWORD=${GOTIFY_ADMIN_PASSWORD}
+    volumes:
+      - ./gotify:/app/data
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # BLE2MQTT
+  # ---------------------------
+  ble2mqtt:
+    image: mkevenaar/ble2mqtt:latest
+    container_name: ble2mqtt
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+      - MQTT_BROKER_URL=tcp://mosquitto:1883
+      - MQTT_USERNAME=${MOSQUITTO_USER}
+      - MQTT_PASSWORD=${MOSQUITTO_PASSWORD}
+    volumes:
+      - ./ble2mqtt:/config
+    devices:
+      - /dev/ble0
+
+  # ---------------------------
+  # ESPHome
+  # ---------------------------
+  esphome:
+    image: esphome/esphome:latest
+    container_name: esphome
+    restart: unless-stopped
+    ports:
+      - "6052:6052"
+    volumes:
+      - ./esphome:/config
+    environment:
+      - TZ=${TZ}
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Zigbee2MQTT
+  # ---------------------------
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt:latest
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+    environment:
+      - TZ=${TZ}
+      - MQTT_BROKER_URL=tcp://mosquitto:1883
+      - MQTT_USERNAME=${MOSQUITTO_USER}
+      - MQTT_PASSWORD=${MOSQUITTO_PASSWORD}
+    devices:
+      - /dev/ttyACM0
