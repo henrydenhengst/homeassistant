@@ -43,6 +43,7 @@ set -e
 set -o pipefail
 
 ENV_FILE="$STACK_DIR/.env"
+STACK_DIR="$HOME/home-assistant"
 
 LOG_FILE="$HOME/ha-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
