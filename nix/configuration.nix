@@ -5,14 +5,10 @@
     ./hardware-configuration.nix
   ];
 
-  # ---------------------------
-  # Basis systeem
-  # ---------------------------
   networking.hostName = "homelab";
   time.timeZone = "Europe/Amsterdam";
 
   boot.loader.grub.device = "/dev/sda";
-
   nixpkgs.config.allowUnfree = true;
 
   # ---------------------------
@@ -23,7 +19,6 @@
     extraGroups = [ "wheel" "docker" ];
     initialPassword = "changeme";
   };
-
   security.sudo.wheelNeedsPassword = false;
 
   # ---------------------------
@@ -32,7 +27,7 @@
   virtualisation.docker.enable = true;
 
   # ---------------------------
-  # Essentials only
+  # Firmware voor USB dongles
   # ---------------------------
   environment.systemPackages = with pkgs; [
     git
@@ -40,7 +35,6 @@
     curl
     usbutils
 
-    # Firmware (voor Zigbee / BLE / WiFi dongles)
     firmware-linux
     firmware-linux-nonfree
     firmware-iwlwifi
@@ -50,7 +44,7 @@
   ];
 
   # ---------------------------
-  # SSH
+  # SSH toegang
   # ---------------------------
   services.openssh.enable = true;
 
@@ -60,7 +54,7 @@
   networking.firewall.enable = true;
 
   # ---------------------------
-  # Homelab directories
+  # Homelab folders
   # ---------------------------
   systemd.tmpfiles.rules = [
     "d /srv/homelab 0755 homelab homelab -"
