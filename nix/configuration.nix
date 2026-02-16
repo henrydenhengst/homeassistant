@@ -5,12 +5,8 @@ let
 in
 
 {
-  imports =
-    [ ./hardware-configuration.nix ];
+  imports = [ ./hardware-configuration.nix ];
 
-  # -----------------------------
-  # Basis instellingen
-  # -----------------------------
   boot.loader.grub.device = "/dev/sda";
   networking.hostName = "homelab";
   time.timeZone = "Europe/Amsterdam";
@@ -23,16 +19,15 @@ in
 
   security.wheelNeedsPassword = false;
 
-  # -----------------------------
-  # Docker
-  # -----------------------------
+  # -------------------------------
+  # Docker & Compose
+  # -------------------------------
   services.docker.enable = true;
-  services.docker.extraOptions = "--iptables=false";
   virtualisation.docker-compose.enable = true;
 
-  # -----------------------------
-  # Firmware voor Zigbee / Bluetooth / WiFi
-  # -----------------------------
+  # -------------------------------
+  # Systeem packages inclusief git/vim
+  # -------------------------------
   environment.systemPackages = with pkgs; [
     firmware-linux
     firmware-linux-nonfree
@@ -46,14 +41,15 @@ in
     gnupg
     lsb-release
     ca-certificates
+    git
+    vim
   ];
 
-  # Non-free firmware toestaan
   nixpkgs.config.allowUnfree = true;
 
-  # -----------------------------
-  # Homelab folders
-  # -----------------------------
+  # -------------------------------
+  # Maak homelab folders aan
+  # -------------------------------
   systemd.tmpfiles.rules = [
     "d /srv/homelab 0755 homelab homelab -"
     "d /srv/homelab/homeassistant 0755 homelab homelab -"
@@ -72,23 +68,9 @@ in
     "d /srv/homelab/appdaemon 0755 homelab homelab -"
   ];
 
-  # -----------------------------
-  # SSH en firewall
-  # -----------------------------
+  # -------------------------------
+  # Extra services
+  # -------------------------------
   services.openssh.enable = true;
   services.firewall.enable = true;
-
-  # -----------------------------
-  # Docker auto-start (optioneel)
-  # -----------------------------
-  systemd.services.docker-wait = {
-    description = "Start Docker after boot";
-    after = [ "network.target" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.docker}/bin/docker start";
-      RemainAfterExit = true;
-    };
-  };
 }
