@@ -435,6 +435,35 @@ systemctl restart fail2ban
 systemctl enable fail2ban
 systemctl restart ssh
 
+
+echo "🔎 USB devices detecteren..."
+
+detect_usb() {
+    local pattern=$1
+    ls $pattern 2>/dev/null | head -n1 || true
+}
+
+# Zigbee
+if [ -z "$ZIGBEE_USB" ]; then
+    ZIGBEE_USB=$(detect_usb "/dev/serial/by-id/*zigbee*" )
+    [ -z "$ZIGBEE_USB" ] && ZIGBEE_USB=$(detect_usb "/dev/ttyUSB*")
+fi
+
+# ZWave
+if [ -z "$ZWAVE_USB" ]; then
+    ZWAVE_USB=$(detect_usb "/dev/serial/by-id/*zwave*" )
+fi
+
+# RF
+if [ -z "$RF_USB" ]; then
+    RF_USB=$(detect_usb "/dev/serial/by-id/*rfx*" )
+fi
+
+echo "USB mapping:"
+echo "ZIGBEE = ${ZIGBEE_USB:-NOT FOUND}"
+echo "ZWAVE  = ${ZWAVE_USB:-NOT FOUND}"
+echo "RF     = ${RF_USB:-NOT FOUND}"
+
 # =====================================================
 # Docker Compose genereren
 # =====================================================
