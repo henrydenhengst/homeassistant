@@ -1,77 +1,221 @@
-{ config, pkgs, ... }:
+version: "3.9"
 
-let
-  homelabDir = "/srv/homelab";
-in
-{
-  networking.hostName = "homelab";
-  time.timeZone = "Europe/Amsterdam";
+networks:
+  homelab_net:
+    driver: bridge
 
-  users.users.root.initialPassword = "changeme"; # pas veilig aan
-  users.users.homelab = {
-    isNormalUser = true;
-    extraGroups = [ "wheel" "docker" ];
-    password = "changeme"; # pas veilig aan
-  };
+services:
 
-  security.sudo.enable = true;
+  # --------------------------
+  # Home Assistant
+  # --------------------------
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    env_file: .env
+    volumes:
+      - ./homeassistant:/config
+    devices:
+      - /dev/zigbee:/dev/zigbee
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      HASS_DEVICE_AUTODETECT: "1"
+      TZ: Europe/Amsterdam
+    depends_on:
+      - mariadb
+      - mosquitto
+    networks:
+      - homelab_net
 
-  ##############################
-  # HARDWARE / FIRMWARE
-  ##############################
-  hardware.enableAllFirmware = true;
-  services.bluetooth.enable = true;
+  # --------------------------
+  # Mosquitto MQTT
+  # --------------------------
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto:/mosquitto
+    networks:
+      - homelab_net
 
-  # Zigbee CH340 altijd /dev/zigbee
-  services.udev.rules = ''
-    SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="zigbee"
-  '';
+  # --------------------------
+  # MariaDB
+  # --------------------------
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./mariadb:/var/lib/mysql
+    networks:
+      - homelab_net
 
-  ##############################
-  # DOCKER
-  ##############################
-  virtualisation.docker.enable = true;
-  virtualisation.docker.compose.enable = true;
-  virtualisation.docker.enableDockerRootless = false;
-  systemd.services.docker.enable = true;
+  # --------------------------
+  # Node-RED
+  # --------------------------
+  node-red:
+    image: nodered/node-red:latest
+    container_name: node-red
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./node-red:/data
+    networks:
+      - homelab_net
 
-  ##############################
-  # FIREWALL
-  ##############################
-  networking.firewall.enable = true;
-  networking.firewall.allowedTCPPorts = [ 80 443 1880 1883 3000 3001 8080 8081 8086 9000 9443 8000 8001 ];
+  # --------------------------
+  # InfluxDB
+  # --------------------------
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./influxdb:/var/lib/influxdb2
+    networks:
+      - homelab_net
 
-  ##############################
-  # PERSISTENT VOLUMES & AUTOMATISCHE FOLDERCREATIE
-  ##############################
-  environment.systemPackages = with pkgs; [
-    git vim curl wget nano docker-compose
-  ];
+  # --------------------------
+  # Grafana
+  # --------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana:/var/lib/grafana
+    depends_on:
+      - influxdb
+    networks:
+      - homelab_net
 
-  system.activationScripts.createHomelabDirs = ''
-    mkdir -p ${homelabDir}/{homeassistant,mariadb,mosquitto,portainer,beszel,homepage,uptime-kuma,node-red,grafana,influxdb,dozzle,it-tools,duckdns,gotify}
-    chown -R homelab:homelab ${homelabDir}
-  '';
+  # --------------------------
+  # Uptime-Kuma
+  # --------------------------
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uptime-kuma:/app/data
+    networks:
+      - homelab_net
 
-  # Automatisch .env genereren
-  system.activationScripts.createEnvFile = ''
-    cat > ${homelabDir}/.env <<EOF
-TZ=Europe/Amsterdam
-MYSQL_ROOT_PASSWORD=homeassistantroot
-MYSQL_DATABASE=homeassistant
-MYSQL_USER=homeassistant
-MYSQL_PASSWORD=homeassistant
-EOF
-    chown homelab:homelab ${homelabDir}/.env
-  '';
+  # --------------------------
+  # DuckDNS
+  # --------------------------
+  duckdns:
+    image: linuxserver/duckdns
+    container_name: duckdns
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./duckdns:/config
+    networks:
+      - homelab_net
 
-  ##############################
-  # OPTIONAL SERVICES
-  ##############################
-  services.openssh.enable = true;
+  # --------------------------
+  # Gotify
+  # --------------------------
+  gotify:
+    image: gotify/server:2.0
+    container_name: gotify
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./gotify:/app/data
+    networks:
+      - homelab_net
 
-  systemd.journald.extraConfig = ''
-    Storage=persistent
-    Compress=yes
-  '';
-}
+  # --------------------------
+  # Portainer
+  # --------------------------
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+    networks:
+      - homelab_net
+
+  # --------------------------
+  # Dozzle
+  # --------------------------
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - homelab_net
+
+  # --------------------------
+  # Homepage
+  # --------------------------
+  homepage:
+    image: your/homepage-image
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./homepage:/usr/share/nginx/html
+    networks:
+      - homelab_net
+
+  # --------------------------
+  # Beszel
+  # --------------------------
+  beszel:
+    image: your/beszel-image
+    container_name: beszel
+    restart: unless-stopped
+    ports:
+      - "8001:80"
+    volumes:
+      - ./beszel:/app
+    networks:
+      - homelab_net
+
+  # --------------------------
+  # AppDaemon
+  # --------------------------
+  appdaemon:
+    image: acockburn/appdaemon:latest
+    container_name: appdaemon
+    restart: unless-stopped
+    ports:
+      - "5050:5050"  # Web UI
+    volumes:
+      - ./appdaemon:/conf
+    environment:
+      HA_URL: "http://homeassistant:8123"
+      HA_TOKEN: "YOUR_LONG_LIVED_ACCESS_TOKEN"
+      TZ: Europe/Amsterdam
+    depends_on:
+      - homeassistant
+    networks:
+      - homelab_net
