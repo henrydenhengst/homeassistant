@@ -793,8 +793,6 @@ generate_token() {
     openssl rand -hex 32
 }
 
-# ENV maken als die niet bestaat
-[ -f "$ENV_FILE" ] || touch "$ENV_FILE"
 
 update_env_var() {
     local key=$1
