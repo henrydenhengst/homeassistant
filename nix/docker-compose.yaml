@@ -1,0 +1,167 @@
+version: "3.9"
+
+networks:
+  homelab_net:
+    driver: bridge
+
+services:
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    env_file: .env
+    volumes:
+      - ./homeassistant:/config
+    devices:
+      - /dev/zigbee:/dev/zigbee
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      HASS_DEVICE_AUTODETECT: "1"
+      TZ: Europe/Amsterdam
+    depends_on:
+      - mariadb
+      - mosquitto
+    networks:
+      - homelab_net
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto:/mosquitto
+    networks:
+      - homelab_net
+
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./mariadb:/var/lib/mysql
+    networks:
+      - homelab_net
+
+  node-red:
+    image: nodered/node-red:latest
+    container_name: node-red
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./node-red:/data
+    networks:
+      - homelab_net
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./influxdb:/var/lib/influxdb2
+    networks:
+      - homelab_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana:/var/lib/grafana
+    depends_on:
+      - influxdb
+    networks:
+      - homelab_net
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uptime-kuma:/app/data
+    networks:
+      - homelab_net
+
+  duckdns:
+    image: linuxserver/duckdns
+    container_name: duckdns
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Amsterdam
+      - SUBDOMAINS=your-subdomain
+      - TOKEN=your-duckdns-token
+    volumes:
+      - ./duckdns:/config
+    networks:
+      - homelab_net
+
+  gotify:
+    image: gotify/server:2.0
+    container_name: gotify
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./gotify:/app/data
+    networks:
+      - homelab_net
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+    networks:
+      - homelab_net
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - homelab_net
+
+  homepage:
+    image: your/homepage-image
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./homepage:/usr/share/nginx/html
+    networks:
+      - homelab_net
+
+  beszel:
+    image: your/beszel-image
+    container_name: beszel
+    restart: unless-stopped
+    ports:
+      - "8001:80"
+    volumes:
+      - ./beszel:/app
+    networks:
+      - homelab_net
