@@ -29,6 +29,7 @@ fi
 # -------------------------------
 echo "=== INSTALL FIRMWARE ==="
 apt update
+apt upgrade -y
 apt install -y firmware-linux firmware-linux-nonfree firmware-misc-nonfree \
                firmware-realtek firmware-iwlwifi bluez-firmware \
                ca-certificates curl gnupg lsb-release
