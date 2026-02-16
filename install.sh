@@ -1,134 +1,166 @@
 #!/bin/bash
 # =====================================================
-# FULL PRO HOMELAB INSTALLER
-# Gebaseerd op .env configuratie
+# FULL PRO HOMELAB INSTALLER - Debian 13
 # =====================================================
-
 set -e
 set -o pipefail
 
-# =====================================================
-# Laad .env
-# =====================================================
+# -------------------------------
+# Directories & env
+# -------------------------------
 STACK_DIR="$HOME/home-assistant"
+BACKUP_DIR="$STACK_DIR/backups"
 ENV_FILE="$STACK_DIR/.env"
 
-if [ ! -f "$ENV_FILE" ]; then
-    echo "❌ .env bestand niet gevonden in $STACK_DIR"
-    exit 1
-fi
+mkdir -p "$STACK_DIR" "$BACKUP_DIR"
 
-export $(grep -v '^#' "$ENV_FILE" | xargs)
-
-LOG_FILE="$HOME/ha-install.log"
-exec > >(tee -a "$LOG_FILE") 2>&1
-
-echo "===================================================="
-echo "INSTALLATIE START $(date)"
-echo "Stack directory: $STACK_DIR"
-echo "===================================================="
-
-# =====================================================
-# Root check & systeem resources
-# =====================================================
-if [[ $EUID -ne 0 ]]; then
-    echo "❌ Run dit script als root"
-    exit 1
-fi
+# -------------------------------
+# Minimaal systeemcontrole
+# -------------------------------
+MIN_DISK_GB=15
+MIN_RAM_MB=4000
 
 FREE_DISK_GB=$(df / | tail -1 | awk '{print int($4/1024/1024)}')
 TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
 
-if [[ $FREE_DISK_GB -lt 14 || $TOTAL_RAM_MB -lt 3000 ]]; then
+if [[ $FREE_DISK_GB -lt $MIN_DISK_GB || $TOTAL_RAM_MB -lt $MIN_RAM_MB ]]; then
     echo "❌ Onvoldoende systeembronnen: Schijf=${FREE_DISK_GB}GB, RAM=${TOTAL_RAM_MB}MB"
     exit 1
 fi
 
-# =====================================================
-# Update + basis tools
-# =====================================================
-apt-get update && apt-get install -y \
-  apt-transport-https ca-certificates curl gnupg lsb-release \
-  ufw openssh-server fail2ban vim nano git htop jq unzip \
-  unattended-upgrades docker-compose-plugin
-
-# =====================================================
-# Docker installeren (indien niet aanwezig)
-# =====================================================
-if ! command -v docker >/dev/null 2>&1; then
-    echo "📦 Docker installeren..."
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
-    systemctl enable docker
-    systemctl restart docker
+if [[ $EUID -ne 0 ]]; then
+   echo "❌ Run als root."
+   exit 1
 fi
 
-docker --version
+# -------------------------------
+# Maak .env aan als het niet bestaat
+# -------------------------------
+if [ ! -f "$ENV_FILE" ]; then
+cat > "$ENV_FILE" <<EOF
+# -------------------------------
+# NETWERK CONFIG
+# -------------------------------
+STATIC_IP=192.168.178.2/24
+JUST_IP=192.168.178.2
+GATEWAY=192.168.178.1
+DNS1=9.9.9.9
+DNS2=1.1.1.1
+DNS3=8.8.8.8
 
-# =====================================================
-# Directories aanmaken
-# =====================================================
-mkdir -p "$STACK_DIR" "$STACK_DIR/backups" \
-    "$STACK_DIR/homeassistant" \
-    "$STACK_DIR/zigbee2mqtt" \
-    "$STACK_DIR/zwavejs2mqtt" \
-    "$STACK_DIR/ble2mqtt" \
-    "$STACK_DIR/rfxtrx" \
-    "$STACK_DIR/mqtt-ir" \
-    "$STACK_DIR/p1monitor" \
-    "$STACK_DIR/esphome" \
-    "$STACK_DIR/nodered_data" \
-    "$STACK_DIR/portainer" \
-    "$STACK_DIR/watchtower" \
-    "$STACK_DIR/dozzle" \
-    "$STACK_DIR/influxdb" \
-    "$STACK_DIR/grafana" \
-    "$STACK_DIR/beszel_data" \
-    "$STACK_DIR/homepage/config" \
-    "$STACK_DIR/uptime-kuma" \
-    "$STACK_DIR/it-tools" \
-    "$STACK_DIR/crowdsec" \
-    "$STACK_DIR/duckdns" \
-    "$STACK_DIR/gotify" \
-    "$STACK_DIR/appdaemon/apps" \
-    "$STACK_DIR/appdaemon/config"
+# -------------------------------
+# HOME ASSISTANT
+# -------------------------------
+HA_TZ=Europe/Amsterdam
 
-# =====================================================
-# Home Assistant configuratie
-# =====================================================
-HA_CONFIG_FILE="$STACK_DIR/homeassistant/configuration.yaml"
+# -------------------------------
+# MariaDB
+# -------------------------------
+MYSQL_ROOT_PASSWORD=supersecret
+MYSQL_USER=hauser
+MYSQL_PASSWORD=supersecretpass
+MYSQL_DATABASE=homeassistant
 
-if [ ! -f "$HA_CONFIG_FILE" ]; then
-cat > "$HA_CONFIG_FILE" <<EOF
-homeassistant:
-  name: Home
-  latitude: 52.0
-  longitude: 5.0
-  elevation: 10
-  unit_system: metric
-  time_zone: ${HA_TZ}
+# -------------------------------
+# MQTT (Mosquitto)
+# -------------------------------
+MQTT_USER=hauser
+MQTT_PASSWORD=supersecretpass
 
-recorder:
-  db_url: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mariadb/${MYSQL_DATABASE}?charset=utf8mb4
+# -------------------------------
+# DuckDNS
+# -------------------------------
+DUCKDNS_SUB=myhome
+DUCKDNS_TOKEN=xxxxxxxxxxxxxx
+
+# -------------------------------
+# USB Devices (optioneel)
+# -------------------------------
+ZIGBEE_USB=/dev/null
+ZWAVE_USB=/dev/null
+BLE_USB=/dev/null
+RF_USB=/dev/null
+IR_USB=/dev/null
+P1_USB=/dev/null
+BT_USB=/dev/null
+
+# -------------------------------
+# Docker volumes & tokens
+# -------------------------------
+PORTAINER_VOLUME=portainer_data
+APPDAEMON_TOKEN=auto
+NODE_RED_TOKEN=auto
 EOF
 fi
 
-# =====================================================
-# Docker Compose FULL PRO
-# =====================================================
+# Laad .env
+export $(grep -v '^#' "$ENV_FILE" | xargs)
+
+# -------------------------------
+# Basis tools installeren
+# -------------------------------
+apt-get update && apt-get install -y \
+    apt-transport-https ca-certificates curl gnupg lsb-release \
+    ufw openssh-server vim nano htop git jq unzip net-tools \
+    docker.io docker-compose memtester socat wget lsof
+
+# -------------------------------
+# Docker service activeren
+# -------------------------------
+systemctl enable docker
+systemctl restart docker
+
+# -------------------------------
+# Directories voor containers
+# -------------------------------
+for dir in homeassistant zigbee2mqtt zwavejs2mqtt ble2mqtt rfxtrx mqtt-ir p1monitor \
+           esphome nodered_data portainer_data watchtower dozzle influxdb grafana \
+           beszel_data homepage uptime-kuma it-tools crowdsec duckdns gotify appdaemon apps; do
+    mkdir -p "$STACK_DIR/$dir"
+done
+
+# -------------------------------
+# Tokens genereren indien nodig
+# -------------------------------
+generate_token() { openssl rand -hex 32; }
+update_env_var() {
+    key=$1; value=$2
+    if grep -q "^$key=" "$ENV_FILE"; then
+        sed -i "s|^$key=.*|$key=$value|" "$ENV_FILE"
+    else
+        echo "$key=$value" >> "$ENV_FILE"
+    fi
+}
+
+TOKENS_UPDATED=false
+
+for token_var in NODE_RED_TOKEN APPDAEMON_TOKEN; do
+    val=$(grep "^$token_var=" "$ENV_FILE" | cut -d '=' -f2)
+    if [ -z "$val" ] || [ "$val" = "auto" ]; then
+        new=$(generate_token)
+        update_env_var "$token_var" "$new"
+        TOKENS_UPDATED=true
+    fi
+done
+
+# -------------------------------
+# Docker Compose genereren
+# -------------------------------
 cat > "$STACK_DIR/docker-compose.yml" <<EOF
+version: '3.8'
 
 services:
+
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
     privileged: true
     restart: unless-stopped
-    ports:
-      - "8123:8123"
+    ports: ["8123:8123"]
     volumes:
       - ./homeassistant:/config
     environment:
-      - TZ=${HA_TZ}
+      - TZ=\${HA_TZ}
     depends_on:
       - mariadb
       - mosquitto
@@ -138,10 +170,10 @@ services:
     container_name: mariadb
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: \${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: \${MYSQL_DATABASE}
+      MYSQL_USER: \${MYSQL_USER}
+      MYSQL_PASSWORD: \${MYSQL_PASSWORD}
     volumes:
       - ./mariadb:/var/lib/mysql
 
@@ -149,10 +181,9 @@ services:
     image: eclipse-mosquitto
     container_name: mosquitto
     restart: unless-stopped
-    ports:
-      - "8120:1883"
+    ports: ["8120:1883"]
     environment:
-      - TZ=${HA_TZ}
+      - TZ=\${HA_TZ}
     volumes:
       - ./mosquitto:/mosquitto
 
@@ -160,14 +191,13 @@ services:
     image: koenkk/zigbee2mqtt
     container_name: zigbee2mqtt
     restart: unless-stopped
-    ports:
-      - "8121:8080"
-    devices:
-      - "${ZIGBEE_USB:-}"
+    ports: ["8121:8080"]
     volumes:
       - ./zigbee2mqtt:/app/data
+    devices:
+      - \${ZIGBEE_USB}:/dev/ttyUSB0
     environment:
-      - TZ=${HA_TZ}
+      - TZ=\${HA_TZ}
     depends_on:
       - mosquitto
 
@@ -175,21 +205,30 @@ services:
     image: zwavejs/zwavejs2mqtt
     container_name: zwavejs2mqtt
     restart: unless-stopped
-    ports:
-      - "8129:8091"
-    devices:
-      - "${ZWAVE_USB:-}"
+    ports: ["8129:8091"]
     volumes:
       - ./zwavejs2mqtt:/usr/src/app/store
+    devices:
+      - \${ZWAVE_USB}:/dev/ttyUSB0
     environment:
-      - TZ=${HA_TZ}
+      - TZ=\${HA_TZ}
+
+  ble2mqtt:
+    image: ghcr.io/eblot/ble2mqtt:latest
+    container_name: ble2mqtt
+    restart: unless-stopped
+    environment:
+      - TZ=\${HA_TZ}
+    devices:
+      - \${BLE_USB}:/dev/hci0
+    volumes:
+      - ./ble2mqtt:/config
 
   esphome:
     image: ghcr.io/esphome/esphome
     container_name: esphome
     restart: unless-stopped
-    ports:
-      - "8122:6052"
+    ports: ["8122:6052"]
     volumes:
       - ./esphome:/config
 
@@ -197,13 +236,12 @@ services:
     image: nodered/node-red:latest
     container_name: nodered
     restart: unless-stopped
-    ports:
-      - "2136:1880"
+    ports: ["2136:1880"]
+    environment:
+      - TZ=\${HA_TZ}
+      - NODE_RED_TOKEN=\${NODE_RED_TOKEN}
     volumes:
       - ./nodered_data:/data
-    environment:
-      - TZ=${HA_TZ}
-      - NODE_RED_TOKEN=${NODE_RED_TOKEN}
     depends_on:
       - mosquitto
       - homeassistant
@@ -212,12 +250,10 @@ services:
     image: portainer/portainer-ce
     container_name: portainer
     restart: unless-stopped
-    ports:
-      - "8124:9000"
-      - "8125:9443"
+    ports: ["8124:9000","8125:9443"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${PORTAINER_VOLUME}:/data
+      - \${PORTAINER_VOLUME}:/data
 
   watchtower:
     image: containrrr/watchtower
@@ -231,8 +267,7 @@ services:
     image: amir20/dozzle
     container_name: dozzle
     restart: unless-stopped
-    ports:
-      - "8126:8080"
+    ports: ["8126:8080"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -240,8 +275,7 @@ services:
     image: influxdb:2.7
     container_name: influxdb
     restart: unless-stopped
-    ports:
-      - "8127:8086"
+    ports: ["8127:8086"]
     volumes:
       - ./influxdb:/var/lib/influxdb2
 
@@ -249,8 +283,7 @@ services:
     image: grafana/grafana-oss
     container_name: grafana
     restart: unless-stopped
-    ports:
-      - "8128:3000"
+    ports: ["8128:3000"]
     volumes:
       - ./grafana:/var/lib/grafana
 
@@ -258,8 +291,7 @@ services:
     image: henrygd/beszel:latest
     container_name: beszel
     restart: unless-stopped
-    ports:
-      - "8131:8090"
+    ports: ["8131:8090"]
     volumes:
       - ./beszel_data:/data
 
@@ -275,8 +307,7 @@ services:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     restart: unless-stopped
-    ports:
-      - "8133:3000"
+    ports: ["8133:3000"]
     volumes:
       - ./homepage/config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -285,8 +316,7 @@ services:
     image: louislam/uptime-kuma
     container_name: uptime-kuma
     restart: unless-stopped
-    ports:
-      - "8132:3001"
+    ports: ["8132:3001"]
     volumes:
       - ./uptime-kuma:/app/data
 
@@ -294,8 +324,7 @@ services:
     image: corentinth/it-tools:latest
     container_name: it-tools
     restart: unless-stopped
-    ports:
-      - "8135:8080"
+    ports: ["8135:8080"]
     volumes:
       - ./it-tools:/data
 
@@ -303,8 +332,7 @@ services:
     image: crowdsecurity/crowdsec
     container_name: crowdsec
     restart: unless-stopped
-    ports:
-      - "8134:8080"
+    ports: ["8134:8080"]
     volumes:
       - ./crowdsec:/etc/crowdsec
 
@@ -312,8 +340,7 @@ services:
     image: gotify/server:2.0
     container_name: gotify
     restart: unless-stopped
-    ports:
-      - "8137:80"
+    ports: ["8137:80"]
     volumes:
       - ./gotify:/app/data
 
@@ -321,17 +348,16 @@ services:
     image: acockburn/appdaemon:latest
     container_name: appdaemon
     restart: unless-stopped
-    depends_on:
-      - homeassistant
+    ports: ["8138:5050"]
     environment:
       - HA_URL=http://${JUST_IP}:8123
-      - TOKEN=${APPDAEMON_TOKEN}
+      - TOKEN=\${APPDAEMON_TOKEN}
       - DASH_URL=http://0.0.0.0:5050
     volumes:
-      - ./appdaemon/config:/conf
-      - ./appdaemon/apps:/conf/apps
-    ports:
-      - "8138:5050"
+      - ./appdaemon:/conf
+      - ./apps:/conf/apps
+    depends_on:
+      - homeassistant
 
   duckdns:
     image: linuxserver/duckdns
@@ -340,47 +366,25 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=${HA_TZ}
-      - SUBDOMAINS=${DUCKDNS_SUB}
-      - TOKEN=${DUCKDNS_TOKEN}
+      - TZ=\${HA_TZ}
+      - SUBDOMAINS=\${DUCKDNS_SUB}
+      - TOKEN=\${DUCKDNS_TOKEN}
 
 volumes:
-  ${PORTAINER_VOLUME}:
+  portainer_data:
 EOF
 
-# =====================================================
-# Containers starten
-# =====================================================
-cd "$STACK_DIR"
-docker compose up -d
+# -------------------------------
+# Firewall + SSH hardening
+# -------------------------------
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22/tcp
+ufw allow 8120:8140/tcp
+ufw --force enable
 
-# =====================================================
-# Tokens automatisch genereren als auto
-# =====================================================
-generate_token() { openssl rand -hex 32; }
+sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config || true
+systemctl restart ssh
 
-update_env_var() {
-    local key="$1"
-    local value="$2"
-    if grep -q "^${key}=" "$ENV_FILE"; then
-        sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
-    else
-        echo "${key}=${value}" >> "$ENV_FILE"
-    fi
-}
-
-TOKENS_UPDATED=false
-
-if [ "$NODE_RED_TOKEN" = "auto" ]; then
-    update_env_var NODE_RED_TOKEN $(generate_token)
-    TOKENS_UPDATED=true
-fi
-
-if [ "$APPDAEMON_TOKEN" = "auto" ]; then
-    update_env_var APPDAEMON_TOKEN $(generate_token)
-    TOKENS_UPDATED=true
-fi
-
-$TOKENS_UPDATED && docker restart nodered appdaemon
-
-echo "🎉 FULL PRO Home Assistant stack geïnstalleerd en draait!"
+echo "🎉 Installatie klaar! Start containers:"
+docker compose -f "$STACK_DIR/docker-compose.yml" up -d
