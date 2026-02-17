@@ -1,0 +1,263 @@
+networks:
+  homelab_net:
+    driver: bridge
+
+services:
+
+  # ---------------------------
+  # Home Assistant
+  # ---------------------------
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    env_file: .env
+    volumes:
+      - ./homeassistant:/config
+    devices:
+      - "${ZIGBEE2MQTT_DEVICE}:${ZIGBEE2MQTT_DEVICE}"
+      - "${BLE2MQTT_DEVICE}:${BLE2MQTT_DEVICE}"
+    depends_on:
+      - mariadb
+      - mosquitto
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # AppDaemon
+  # ---------------------------
+  appdaemon:
+    image: acockburn/appdaemon:latest
+    container_name: appdaemon
+    restart: unless-stopped
+    ports:
+      - "${APPDAEMON_PORT}:5050"
+    env_file: .env
+    volumes:
+      - ./appdaemon:/conf
+    depends_on:
+      - homeassistant
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # MQTT / Mosquitto
+  # ---------------------------
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MOSQUITTO_USER=${MOSQUITTO_USER}
+      - MOSQUITTO_PASSWORD=${MOSQUITTO_PASSWORD}
+    volumes:
+      - ./mosquitto:/mosquitto
+    ports:
+      - "1883:1883"
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # MariaDB
+  # ---------------------------
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./mariadb:/var/lib/mysql
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Node-RED
+  # ---------------------------
+  node-red:
+    image: nodered/node-red:latest
+    container_name: node-red
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${NODE_RED_PORT}:1880"
+    volumes:
+      - ./node-red:/data
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Grafana & InfluxDB
+  # ---------------------------
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./influxdb:/var/lib/influxdb2
+    networks:
+      - homelab_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - ./grafana:/var/lib/grafana
+    depends_on:
+      - influxdb
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Uptime-Kuma
+  # ---------------------------
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "${UPTIME_KUMA_PORT}:3001"
+    volumes:
+      - ./uptime-kuma:/app/data
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Portainer
+  # ---------------------------
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Dozzle
+  # ---------------------------
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Homepage Dashboard
+  # ---------------------------
+  homepage:
+    image: your/homepage-image
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "${HOMEPAGE_PORT}:80"
+    env_file: .env
+    volumes:
+      - ./homepage:/usr/share/nginx/html
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Beszel
+  # ---------------------------
+  beszel:
+    image: your/beszel-image
+    container_name: beszel
+    restart: unless-stopped
+    ports:
+      - "${BESZEL_PORT}:80"
+    env_file: .env
+    volumes:
+      - ./beszel:/app
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # DuckDNS
+  # ---------------------------
+  duckdns:
+    image: linuxserver/duckdns
+    container_name: duckdns
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./duckdns:/config
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Gotify
+  # ---------------------------
+  gotify:
+    image: gotify/server:2.0
+    container_name: gotify
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${GOTIFY_PORT}:8080"
+    volumes:
+      - ./gotify:/app/data
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # BLE2MQTT
+  # ---------------------------
+  ble2mqtt:
+    image: mkevenaar/ble2mqtt:latest
+    container_name: ble2mqtt
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    devices:
+      - "${BLE2MQTT_DEVICE}:${BLE2MQTT_DEVICE}"
+    volumes:
+      - ./ble2mqtt:/config
+
+  # ---------------------------
+  # ESPHome
+  # ---------------------------
+  esphome:
+    image: esphome/esphome:latest
+    container_name: esphome
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${ESPHOME_PORT}:6052"
+    volumes:
+      - ./esphome:/config
+    networks:
+      - homelab_net
+
+  # ---------------------------
+  # Zigbee2MQTT
+  # ---------------------------
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt:latest
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+    devices:
+      - "${ZIGBEE2MQTT_DEVICE}:${ZIGBEE2MQTT_DEVICE}"
