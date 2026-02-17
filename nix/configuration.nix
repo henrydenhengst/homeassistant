@@ -12,8 +12,10 @@
   networking.hostName = "homelab";
   time.timeZone = "Europe/Amsterdam";
 
-  # DISABLED: Setting GRUB on a tmpfs root causes build failures
-  boot.loader.grub.enable = false; 
+  # AANGEPAST: Voor een echte SSD installatie moet GRUB AAN staan!
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "/dev/sda"; # Installeer op de fysieke schijf
+  
   nixpkgs.config.allowUnfree = true;
 
   users.users.homelab = {
@@ -26,11 +28,10 @@
   # ------------------------
   # File systems & Optimization
   # ------------------------
-  # REMOVED: Manual fileSystems."/" and "/home" entries to avoid 
-  # conflicts with the auto-detected tmpfs settings.
+  # De fileSystems blokken zijn hier weggehaald omdat ze al in de 
+  # hardware-configuration.nix staan die je script genereert.
   
-  # REMOVED: Swapfile (Caused 'No space left on device' on tmpfs)
-  swapDevices = [ ]; 
+  swapDevices = [ ]; # Leeg laten om "No space" errors tijdens build te voorkomen
 
   systemd.timers.fstrim.enable = true;
 
@@ -45,7 +46,6 @@
   environment.systemPackages = with pkgs; [
     git vim curl usbutils htop wget tmux
     docker-compose
-    # REMOVED: Individual firmware names (they are undefined variables)
   ];
 
   # ------------------------
@@ -71,9 +71,8 @@
   # ------------------------
   # Misc & Fixes
   # ------------------------
-  boot.tmp.cleanOnBoot = true; # Renamed from cleanTmpDir.enable
+  boot.tmp.cleanOnBoot = true;
   hardware.enableAllFirmware = true;
   
-  # Added to fix mandatory version warning
   system.stateVersion = "24.11"; 
 }
