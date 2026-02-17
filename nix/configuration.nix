@@ -4,8 +4,7 @@
   # ------------------------
   # Hardware detection
   # ------------------------
-  imports =
-    [ ./hardware-configuration.nix ];
+  imports = [ ./hardware-configuration.nix ];
 
   # ------------------------
   # Basic system settings
@@ -13,34 +12,27 @@
   networking.hostName = "homelab";
   time.timeZone = "Europe/Amsterdam";
 
-  boot.loader.grub.device = "/dev/sda";   # MBR bootloader voor oude BIOS
+  # DISABLED: Setting GRUB on a tmpfs root causes build failures
+  boot.loader.grub.enable = false; 
   nixpkgs.config.allowUnfree = true;
 
   users.users.homelab = {
     isNormalUser = true;
     extraGroups = [ "wheel" "docker" ];
-    initialPassword = "changeme";  # pas aan
+    initialPassword = "changeme";
   };
   security.sudo.wheelNeedsPassword = false;
 
   # ------------------------
-  # File systems & SSD optimization
+  # File systems & Optimization
   # ------------------------
-  fileSystems."/" = {
-    device = "/dev/sda1";
-    fsType = "ext4";
-    options = [ "noatime" "defaults" ];
-  };
+  # REMOVED: Manual fileSystems."/" and "/home" entries to avoid 
+  # conflicts with the auto-detected tmpfs settings.
+  
+  # REMOVED: Swapfile (Caused 'No space left on device' on tmpfs)
+  swapDevices = [ ]; 
 
-  fileSystems."/home" = {
-    device = "/dev/sda2";
-    fsType = "ext4";
-    options = [ "noatime" "defaults" ];
-  };
-
-  swapDevices = [ { device = "/swapfile"; size = 2 * 1024 * 1024 * 1024; } ];
-
-  systemd.timers.fstrim.enable = true;  # automatisch TRIM
+  systemd.timers.fstrim.enable = true;
 
   # ------------------------
   # Docker
@@ -53,8 +45,7 @@
   environment.systemPackages = with pkgs; [
     git vim curl usbutils htop wget tmux
     docker-compose
-    firmware-linux firmware-linux-nonfree firmware-iwlwifi firmware-realtek
-    bluez bluez-firmware
+    # REMOVED: Individual firmware names (they are undefined variables)
   ];
 
   # ------------------------
@@ -62,7 +53,7 @@
   # ------------------------
   services.openssh.enable = true;
   networking.firewall.enable = true;
-  networking.firewall.allowedTCPPorts = [ 22 8123 1883 ]; # SSH, Home Assistant, MQTT
+  networking.firewall.allowedTCPPorts = [ 22 8123 1883 ];
 
   # ------------------------
   # Homelab folders
@@ -72,14 +63,17 @@
   ];
 
   # ------------------------
-  # Auto-upgrades (optioneel)
+  # Auto-upgrades
   # ------------------------
   system.autoUpgrade.enable = true;
   system.autoUpgrade.allowReboot = false;
 
   # ------------------------
-  # Misc
+  # Misc & Fixes
   # ------------------------
-  boot.cleanTmpDir.enable = true;
+  boot.tmp.cleanOnBoot = true; # Renamed from cleanTmpDir.enable
   hardware.enableAllFirmware = true;
+  
+  # Added to fix mandatory version warning
+  system.stateVersion = "24.11"; 
 }
