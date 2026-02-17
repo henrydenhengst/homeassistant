@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 USER_NAME="${SUDO_USER:-$(whoami)}"
 HOMELAB_DIR="/srv/homelab"
+REPO_URL="https://github.com/henrydenhengst/homeassistant.git"
+REPO_DIR="$HOMELAB_DIR/homeassistant"
 
 echo "===================================="
 echo " Homelab Post Setup Script"
 echo "===================================="
 
 # ----------------------------
-# Check docker group
+# Docker group check
 # ----------------------------
 echo ">>> Checking docker group membership"
 
@@ -21,32 +23,103 @@ else
 fi
 
 # ----------------------------
-# Maak homelab folder
+# Homelab directory
 # ----------------------------
 echo ">>> Ensuring homelab directory exists"
 mkdir -p "$HOMELAB_DIR"
 chown -R "$USER_NAME":"$USER_NAME" "$HOMELAB_DIR"
 
 # ----------------------------
-# Docker check
+# Docker service
 # ----------------------------
-echo ">>> Checking Docker service"
+echo ">>> Checking Docker binary"
+if ! command -v docker >/dev/null 2>&1; then
+    echo "Docker niet gevonden ❌"
+    exit 1
+fi
+
+echo ">>> Enabling Docker service"
 systemctl enable docker || true
+
+echo ">>> Starting Docker service"
 systemctl start docker || true
 
+sleep 2
+
+echo ">>> Verifying Docker service"
+if systemctl is-active --quiet docker; then
+    echo "Docker draait ✅"
+else
+    echo "Docker start mislukt ❌"
+    exit 1
+fi
+
 # ----------------------------
-# Force docker group refresh
+# Docker test container
 # ----------------------------
-echo ">>> Refreshing group membership"
+echo ">>> Running Docker test container"
+if docker run --rm hello-world >/dev/null 2>&1; then
+    echo "Docker test container OK ✅"
+else
+    echo "Docker test container FAILED ❌"
+fi
+
+# ----------------------------
+# Docker compose check
+# ----------------------------
+echo ">>> Checking Docker Compose plugin"
+if docker compose version >/dev/null 2>&1; then
+    echo "Docker Compose beschikbaar ✅"
+else
+    echo "Docker Compose ontbreekt ⚠"
+fi
+
+# ----------------------------
+# Git check
+# ----------------------------
+echo ">>> Checking Git"
+if ! command -v git >/dev/null 2>&1; then
+    echo "Git niet gevonden → probeer installeren"
+    nix-env -iA nixos.git || true
+fi
+
+# ----------------------------
+# Repo ophalen
+# ----------------------------
+echo ">>> Preparing homelab repo"
+
+if [ -d "$REPO_DIR/.git" ]; then
+    echo "Repo bestaat al → pull latest"
+    git -C "$REPO_DIR" pull
+else
+    echo "Cloning repo"
+    git clone "$REPO_URL" "$REPO_DIR"
+fi
+
+chown -R "$USER_NAME":"$USER_NAME" "$HOMELAB_DIR"
+
+# ----------------------------
+# Docker compose start
+# ----------------------------
+echo ">>> Starting docker compose stack"
+
+if [ -f "$REPO_DIR/docker-compose.yml" ] || [ -f "$REPO_DIR/compose.yml" ]; then
+    cd "$REPO_DIR"
+    docker compose up -d
+    echo "Docker stack gestart ✅"
+else
+    echo "⚠ Geen docker-compose.yml gevonden"
+fi
+
+# ----------------------------
+# Refresh docker group session
+# ----------------------------
+echo ">>> Refreshing docker group session"
 
 if command -v loginctl >/dev/null 2>&1; then
-    echo "Restarting user session (clean method)"
     loginctl terminate-user "$USER_NAME" || true
 else
-    echo "Fallback to newgrp"
-    su - "$USER_NAME" -c "newgrp docker <<EOF
-echo Docker group refreshed
-EOF"
+    echo "Log opnieuw in voor docker group"
 fi
 
 echo ""
@@ -54,9 +127,7 @@ echo "===================================="
 echo " DONE"
 echo "===================================="
 echo ""
-echo "➡ Reconnect SSH if session closed"
-echo "➡ Then run:"
-echo ""
-echo "cd $HOMELAB_DIR"
-echo "docker compose up -d"
+echo "➡ Indien SSH disconnect → reconnect"
+echo "➡ Controleer containers:"
+echo "docker ps"
 echo ""
